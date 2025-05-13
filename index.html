@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- 基础元信息 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poseidon FX Order Placement</title>
+
+    <!-- 第三方样式表 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+    
+    <!-- Electron 开发工具注入 -->
+    <script>
+        /**
+         * 开发环境调试工具初始化
+         * 检测到Electron开发环境时自动打开开发者工具
+         */
+        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+            window.addEventListener('DOMContentLoaded', () => {
+                require('electron').webFrame.openDevTools();
+            });
+        }
+    </script>
+
+    <!-- 自定义样式 -->
+    <style>
+        /* 订单区块样式 */
+        .order { 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 5px; 
+        }
+        /* 隐藏元素通用类 */
+        .hidden { display: none; }
+        /* 图表容器尺寸 */
+        .chart-container { 
+            height: 600px; 
+            margin-top: 20px; 
+        }
+        /* 全局禁用文本选择 */
+        body { 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+    </style>
+</head>
+<body class="container mt-5">
+    <!-- 页面标题 -->
+    <h1 class="mb-4">Poseidon FX Order Placement System</h1>
+    
+    <!-- 主表单容器 -->
+    <div id="formContainer">
+        <!-- 账户选择 -->
+        <div class="mb-3">
+            <label for="account" class="form-label">Account</label>
+            <select id="account" class="form-select">
+                <option value="HK-130381 Next Merchant">HK-130381 Next Merchant</option>
+                <option value="HK-375298 Super Aim">HK-375298 Super Aim</option>
+                <option value="SG-229613 Rome Garden">SG-229613 Rome Garden Limited</option>
+                <option value="HK-375289 Xu Wei">HK-375289 Xu Wei</option>
+            </select>
+        </div>
+
+        <!-- 收件人选择 -->
+        <div class="mb-3">
+            <label for="recipient" class="form-label">Recipient</label>
+            <select id="recipient" class="form-select">
+                <option value="gfim-hk-ia@ubs.com">UBS HK GFIM (gfim-hk-ia@ubs.com)</option>
+                <option value="ol-fxdac-apac@ubs.com">UBS FX DAC (ol-fxdac-apac@ubs.com)</option>  
+            </select>
+        </div>
+
+        <!-- 动态显示的客户代码输入 -->
+        <div class="mb-3" id="clientCodeContainer" style="display: none;">
+            <label for="clientCode" class="form-label">UBS FX DAC Client Code</label>
+            <select id="clientCode" class="form-select">
+                <option value="WMPOSESG1">WMPOSESG1</option>
+                <option value="WMPOSEHK1">WMPOSEHK1</option>
+            </select>
+        </div>
+
+        <!-- 订单容器 -->
+        <div id="orders"></div>
+        
+        <!-- 操作按钮 -->
+        <button id="addOrder" class="btn btn-secondary mb-3">Add Another Order</button>
+        <button id="openOutlook" class="btn btn-primary">Generate Email</button>
+    </div>
+
+    <!-- 第三方脚本 -->
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- 应用主逻辑 -->
+    <script>
+        /**
+         * 格式化金额显示（添加千位分隔符）
+         * @param {string} value - 用户输入的原始值
+         * @returns {string} 格式化后的金额字符串
+         * @example
+         * formatNotional("1234567.89") => "1,234,567.89"
+         */
+        function formatNotional(value) {
+            // 清除非数字字符
+            const cleanValue = value.replace(/[^0-9.]/g, '');
+            if (!cleanValue) return '';
+            
+            // 分割整数和小数部分
+            const parts = cleanValue.split('.');
+            // 添加千位分隔符
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            
+            return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
+        }
+
+        /**
+         * 生成邮件主题中的日期字符串
+         * @returns {string} 格式为YYYYMMDD的日期字符串
+         * @example formatDateForSubject() => "20230801"
+         */
+        function formatDateForSubject() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+
+        // 初始化收件人选择监听
+        document.addEventListener('DOMContentLoaded', function() {
+            const recipientSelect = document.getElementById('recipient');
+            const clientCodeContainer = document.getElementById('clientCodeContainer');
+
+            /**
+             * 收件人选择变化监听
+             * 当选择UBS FX DAC时显示客户代码输入框
+             */
+            recipientSelect.addEventListener('change', function() {
+                const isDAC = this.value === 'ol-fxdac-apac@ubs.com';
+                clientCodeContainer.style.display = isDAC ? 'block' : 'none';
+                if (!isDAC) document.getElementById('clientCode').value = 'N/A';
+            });
+        });
+
+        /**
+         * 添加新订单表单
+         * 动态生成订单表单HTML并初始化相关事件监听
+         */
+        function addOrder() {
+            const ordersDiv = document.getElementById('orders');
+            const orderIndex = ordersDiv.children.length + 1;
+            
+            // 订单模板（包含市场单和限价单两种类型）
+            const orderHtml = `
+                <!-- 订单容器 -->
+                <div class="order" id="order${orderIndex}">
+                    <h3>Order ${orderIndex} 
+                        <button class="btn btn-danger btn-sm float-end" onclick="deleteOrder(${orderIndex})">Delete</button>
+                    </h3>
+                    
+                    <!-- 订单类型选择 -->
+                    <div class="mb-3">
+                        <label class="form-label">Order Type:</label>
+                        <div>
+                            <input type="radio" name="orderType${orderIndex}" value="market" id="market${orderIndex}" checked>
+                            <label for="market${orderIndex}">Market</label>
+                            <input type="radio" name="orderType${orderIndex}" value="limit" id="limit${orderIndex}">
+                            <label for="limit${orderIndex}">Limit</label>
+                        </div>
+                    </div>
+
+                    <!-- 买入货币选择 -->
+                    <div class="mb-3">
+                        <label for="buyCurrency${orderIndex}" class="form-label">Buy Currency:</label>
+                        <select id="buyCurrency${orderIndex}" class="form-select">
+                            ${['USD','JPY','HKD','CNH','CHF','EUR','GBP','AUD','NZD'].map(c => `<option value="${c}">${c}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <!-- 卖出货币选择 -->
+                    <div class="mb-3">
+                        <label for="sellCurrency${orderIndex}" class="form-label">Sell Currency:</label>
+                        <select id="sellCurrency${orderIndex}" class="form-select">
+                            ${['USD','JPY','HKD','CNH','CHF','EUR','GBP','AUD','NZD'].map(c => `<option value="${c}">${c}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <!-- 名义金额输入 -->
+                    <div class="mb-3">
+                        <label for="notionalAmount${orderIndex}" class="form-label">Notional Amount:</label>
+                        <div class="input-group">
+                            <select id="notionalCurrency${orderIndex}" class="form-select">
+                                ${['USD','JPY','HKD','CNH','CHF','EUR','GBP','AUD','NZD'].map(c => `<option value="${c}">${c}</option>`).join('')}
+                            </select>
+                            <input type="text" id="notionalAmount${orderIndex}" class="form-control" 
+                                   placeholder="e.g., 3000000 or 400.59" 
+                                   oninput="this.value = formatNotional(this.value)">
+                        </div>
+                    </div>
+
+                    <!-- 市场类型选择 -->
+                    <div class="mb-3">
+                        <label for="marketType${orderIndex}" class="form-label">Market Type:</label>
+                        <select id="marketType${orderIndex}" class="form-select">
+                            <option value="Today">Tenor Today</option>
+                            <option value="Tomorrow">Tenor Tomorrow</option>
+                            <option value="Spot">Tenor Spot</option>
+                        </select>
+                    </div>
+
+                    <!-- 市场单专属字段 -->
+                    <div class="mb-3 marketFields" id="marketFields${orderIndex}">
+                        <label for="spread${orderIndex}" class="form-label">Spread (bps):</label>
+                        <input type="number" id="spread${orderIndex}" class="form-control" placeholder="e.g., 20">
+                        
+                        <label for="marketCurrencyPair${orderIndex}" class="form-label mt-3">Currency Pair:</label>
+                        <select id="marketCurrencyPair${orderIndex}" class="form-select">
+                            <option value="">--Please Select The Corresponding Currency Pair --</option>
+                        </select>
+                        
+                        <div class="chart-container">
+                            <canvas id="marketChart${orderIndex}"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 限价单专属字段 -->
+                    <div class="mb-3 limitFields hidden" id="limitFields${orderIndex}">
+                        <label for="currencyPair${orderIndex}" class="form-label">Currency Pair:</label>
+                        <select id="currencyPair${orderIndex}" class="form-select">
+                            <option value="">--Please Select The Corresponding Currency Pair --</option>
+                        </select>
+                        
+                        <label for="limitPrice${orderIndex}" class="form-label">Limit Price:</label>
+                        <input type="text" id="limitPrice${orderIndex}" class="form-control" placeholder="e.g., 10.6989">
+                        
+                        <label for="goodTill${orderIndex}" class="form-label">Good Till:</label>
+                        <input type="text" id="goodTill${orderIndex}" class="form-control" placeholder="Select date">
+                        
+                        <label for="spreadLimit${orderIndex}" class="form-label">Spread (bps):</label>
+                        <input type="number" id="spreadLimit${orderIndex}" class="form-control" placeholder="e.g., 20">
+                        
+                        <div class="chart-container">
+                            <canvas id="chart${orderIndex}"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 插入新订单
+            ordersDiv.insertAdjacentHTML('beforeend', orderHtml);
+
+            // 获取DOM元素引用
+            const buySelect = document.getElementById(`buyCurrency${orderIndex}`);
+            const sellSelect = document.getElementById(`sellCurrency${orderIndex}`);
+            const notionalSelect = document.getElementById(`notionalCurrency${orderIndex}`);
+
+            /**
+             * 更新名义货币选项
+             * 根据买卖货币选择动态更新可用货币选项
+             */
+            const updateNotionalOptions = () => {
+                const allowedCurrencies = [...new Set([buySelect.value, sellSelect.value])];
+                notionalSelect.innerHTML = '';
+                allowedCurrencies.forEach(currency => {
+                    const option = document.createElement('option');
+                    option.value = currency;
+                    option.text = currency;
+                    notionalSelect.add(option);
+                });
+            };
+
+            // 初始化事件监听
+            buySelect.addEventListener('change', updateNotionalOptions);
+            sellSelect.addEventListener('change', updateNotionalOptions);
+            updateNotionalOptions();
+
+            /**
+             * 更新货币对选项
+             * 根据买卖货币生成可能的货币对组合
+             */
+            const updateCurrencyPairs = () => {
+                const buy = buySelect.value;
+                const sell = sellSelect.value;
+                const marketPairSelect = document.getElementById(`marketCurrencyPair${orderIndex}`);
+                const limitPairSelect = document.getElementById(`currencyPair${orderIndex}`);
+                
+                // 清空现有选项
+                marketPairSelect.innerHTML = '<option value="">--Please Select The Corresponding Currency Pair --</option>';
+                limitPairSelect.innerHTML = '<option value="">--Please Select The Corresponding Currency Pair --</option>';
+                
+                if (buy && sell && buy !== sell) {
+                    // 添加正反货币对
+                    marketPairSelect.add(new Option(`${buy}${sell}`, `${buy}${sell}`));
+                    marketPairSelect.add(new Option(`${sell}${buy}`, `${sell}${buy}`));
+                    limitPairSelect.add(new Option(`${buy}${sell}`, `${buy}${sell}`));
+                    limitPairSelect.add(new Option(`${sell}${buy}`, `${sell}${buy}`));
+                }
+            };
+
+            // 初始化事件监听
+            buySelect.addEventListener('change', updateCurrencyPairs);
+            sellSelect.addEventListener('change', updateCurrencyPairs);
+            updateCurrencyPairs();
+
+            // 初始化日期选择器
+            const input = document.querySelector(`#goodTill${orderIndex}`);
+            const defaultDate = new Date(new Date().setDate(new Date().getDate() + 14));
+
+            flatpickr(input, {
+                defaultDate: defaultDate,
+                dateFormat: "d M Y",
+                onChange: function(selectedDates, dateStr, instance) {
+                    instance.input.value = dateStr + " NY 5pm";
+                }
+            });
+
+            // 设置默认日期值
+            const formattedDate = flatpickr.formatDate(defaultDate, "d M Y");
+            input.value = formattedDate + " NY 5pm";
+
+            // 订单类型切换监听
+            document.querySelectorAll(`input[name="orderType${orderIndex}"]`).forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const marketFields = document.getElementById(`marketFields${orderIndex}`);
+                    const limitFields = document.getElementById(`limitFields${orderIndex}`);
+                    marketFields.classList.toggle('hidden', this.value !== 'market');
+                    limitFields.classList.toggle('hidden', this.value !== 'limit');
+                });
+            });
+
+            // 图表数据加载
+            document.getElementById(`currencyPair${orderIndex}`).addEventListener('change', function() {
+                const pair = this.value;
+                fetchPriceData(pair, orderIndex, 'chart');
+            });
+
+            document.getElementById(`marketCurrencyPair${orderIndex}`).addEventListener('change', function() {
+                const pair = this.value;
+                fetchPriceData(pair, orderIndex, 'marketChart');
+            });
+        }
+
+        /**
+         * 删除指定订单
+         * @param {number} index - 要删除的订单序号
+         */
+        function deleteOrder(index) {
+            const orderDiv = document.getElementById(`order${index}`);
+            orderDiv.remove();
+        }
+
+        /**
+         * 获取价格数据并渲染图表
+         * @param {string} pair - 货币对（如USDCNH）
+         * @param {number} index - 订单序号
+         * @param {string} chartType - 图表类型（chart/marketChart）
+         */
+        async function fetchPriceData(pair, index, chartType) {
+            try {
+                // 发起API请求
+                const response = await fetch(`/api/price/${pair}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP错误 ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (!data || data.length === 0) {
+                    throw new Error('没有获取到价格数据');
+                }
+
+                // 准备图表数据
+                const labels = data.map(d => d.date);
+                const prices = data.map(d => d.close);
+
+                const canvas = document.getElementById(`${chartType}${index}`);
+                
+                // 销毁旧图表实例
+                if (canvas.chart) {
+                    canvas.chart.destroy();
+                }
+
+                // 创建新图表
+                canvas.chart = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: `${pair} 汇率`,
+                            data: prices,
+                            borderColor: '#2962FF',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { display: true },
+                            y: { 
+                                ticks: { 
+                                    callback: v => v.toFixed(4) 
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error(`[Order ${index}] 错误:`, error);
+                document.getElementById(`${chartType}${index}`).innerHTML = 
+                    `<div class="alert alert-danger">图表加载失败: ${error.message}</div>`;
+            }
+        }
+
+        // 初始化第一个订单
+        addOrder();
+
+        // 事件监听：添加订单按钮
+        document.getElementById('addOrder').addEventListener('click', addOrder);
+
+        // 事件监听：生成邮件按钮
+        document.getElementById('openOutlook').addEventListener('click', () => {
+            // 收集表单数据
+            const account = document.getElementById('account').value;
+            const recipient = document.getElementById('recipient').value;
+            const orders = document.querySelectorAll('.order');
+            const clientCode = document.getElementById('clientCode').value;
+            
+            let marketCounter = 0, limitCounter = 0;
+            let orderTexts = [];
+
+            // 处理每个订单
+            orders.forEach((order, index) => {
+                const currentIndex = index + 1;
+                try {
+                    // 获取订单数据
+                    const orderType = order.querySelector(`input[name="orderType${currentIndex}"]:checked`)?.value || 'market';
+                    const buyCurrency = order.querySelector(`#buyCurrency${currentIndex}`)?.value || 'N/A';
+                    const sellCurrency = order.querySelector(`#sellCurrency${currentIndex}`)?.value || 'N/A';
+                    const notionalAmount = order.querySelector(`#notionalAmount${currentIndex}`)?.value.replace(/,/g, '') || '0';
+                    const notionalCurrency = order.querySelector(`#notionalCurrency${currentIndex}`)?.value || 'USD';
+                    const marketType = order.querySelector(`#marketType${currentIndex}`)?.value || 'Spot';
+
+                    let orderText = '';
+                    if (orderType === 'market') {
+                        // 市场单模板
+                        marketCounter++;
+                        const spread = order.querySelector(`#spread${currentIndex}`)?.value || 'N/A';
+                        orderText = `**FX Market Order ${marketCounter}**\nBuy ${buyCurrency}\nSell ${sellCurrency}\nNotional ${notionalCurrency} ${formatNotional(notionalAmount)}\nAt Market, Tenor ${marketType}\nSpread: ${spread}bps`;
+                    } else {
+                        // 限价单模板
+                        limitCounter++;
+                        const currencyPair = order.querySelector(`#currencyPair${currentIndex}`)?.value || 'N/A';
+                        const limitPrice = order.querySelector(`#limitPrice${currentIndex}`)?.value || 'N/A';
+                        const goodTill = order.querySelector(`#goodTill${currentIndex}`)?.value || 'N/A';
+                        const spreadLimit = order.querySelector(`#spreadLimit${currentIndex}`)?.value || 'N/A';
+                        orderText = `**FX Limit Order ${limitCounter}**\nBuy ${buyCurrency}\nSell ${sellCurrency}\nNotional ${notionalCurrency} ${formatNotional(notionalAmount)}\nAt Limit ${currencyPair} = ${limitPrice}, Tenor ${marketType}\nGood til ${goodTill}\nSpread: ${spreadLimit}bps`;
+                    }
+                    orderTexts.push(orderText);
+                } catch (error) {
+                    console.error(`Error processing order ${currentIndex}:`, error);
+                    orderTexts.push(`**Invalid Order ${currentIndex}** (配置错误)`);
+                }
+            });
+
+            // 构建邮件内容
+            let emailBody = `Hi Team,\n\nFor a/c ${account}`;
+            if (recipient === 'ol-fxdac-apac@ubs.com') {
+                emailBody += ` [Client Code: ${clientCode}]`;
+            }
+            emailBody += `,\n\nPls help us place below orders. Thanks.\n\n${orderTexts.join('\n\n')}\n`;
+
+            // 构建邮件参数
+            const subject = `FX Orders - ${formatDateForSubject()}`;
+            const cc = 'heidi.cheng@ubs.com;elsa-za.yu@ubs.com;fa@ppgfo.com;trading@ppgfo.com;mark@ppgfo.com';
+            const mailtoLink = `mailto:${recipient}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            // 打开邮件客户端
+            if (typeof require !== 'undefined') {
+                const { shell } = require('electron');
+                shell.openExternal(mailtoLink);
+            } else {
+                window.location.href = mailtoLink;
+            }
+        });
+    </script>
+
+    <!-- Cloudflare 验证脚本 -->
+    <script>(function(){/* Cloudflare 的防机器人脚本，无需修改 */})();</script>
+</body>
+</html>
