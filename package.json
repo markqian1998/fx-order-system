@@ -1,0 +1,42 @@
+{
+  "name": "poseidon-fx-orders",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder -mw",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win --x64"
+  },
+  "build": {
+    "asar": false,
+    "asarUnpack": [
+    "**/node_modules/@sinclair/typebox/**",
+    "**/node_modules/tough-cookie/**",
+    "**/node_modules/tough-cookie-file-store/**"
+    ],
+    "appId": "com.yourcompany.poseidon",
+    "productName": "Poseidon FX Orders",
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/mac-icon.png",
+      "category": "public.app-category.finance"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/win-icon.ico"
+    },
+    "extraResources": [
+      "assets/**"
+    ]
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "yahoo-finance2": "^2.13.3"
+  },
+  "devDependencies": {
+    "electron": "^36.2.0",
+    "electron-builder": "^24.13.3"
+  }
+}
