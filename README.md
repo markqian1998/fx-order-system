@@ -1,6 +1,3 @@
-Got it — here is your **entire README content fully formatted in Markdown**, from the title through to acknowledgments, ready to use as `README.md`:
-
-````markdown
 # fx-order-system
 
 A system which helps PPFGO traders place FX orders via email in a faster way.
@@ -129,7 +126,4 @@ See the `LICENSE` file for details.
 * Built to optimize FX order workflows for PPFGO traders
 * Inspired by operational needs and powered by open-source Node.js technologies
 
-```
-
-You can copy this directly into your `README.md`. Let me know if you’d like a version with badges (e.g., Node.js version, MIT license, etc.) at the top.
 ```
