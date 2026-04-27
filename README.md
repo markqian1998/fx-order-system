@@ -17,9 +17,39 @@ The `fx-order-system` is a Node.js-based application designed to streamline the 
 
 ## Prerequisites
 
-- **Node.js**: Version 14.x or later (recommended)  
-- **npm**: Included with Node.js installation  
-- **Internet Connection**: Required for fetching real-time FX data  
+- **Node.js**: Version 14.x or later (recommended)
+- **npm**: Included with Node.js installation
+- **Internet Connection**: Required for fetching real-time FX data and the Airtable account list
+- **Airtable PAT**: Read access on the `Poseidon DB` base (see "First-time setup" below)
+
+---
+
+## First-time setup (Airtable credentials)
+
+The app fetches the account list from Airtable. Each user needs their own Personal Access Token.
+
+1. In Airtable → **Builder Hub → Personal access tokens**, create a token with at minimum:
+   - Scope: `data.records:read`
+   - Access: the `Poseidon DB` base
+2. Drop a `.env` file with that token in the location for your environment:
+
+   | Mode             | Path                                                                 |
+   | ---------------- | -------------------------------------------------------------------- |
+   | Dev (`npm start`)| `<repo>/.env`                                                        |
+   | Installed (Mac)  | `~/Library/Application Support/Poseidon FX Orders/.env`              |
+   | Installed (Win)  | `%APPDATA%\Poseidon FX Orders\.env`                                  |
+
+3. Use `.env.example` in this repo as the template:
+
+   ```
+   AIRTABLE_PAT=patXXXXXXXXXXXXXX.YYYYYYYYYYYYY...
+   AIRTABLE_BASE_ID=app2U49wa2ylprOBP
+   AIRTABLE_ACCOUNTS_TABLE_ID=tblVOMFxcFEBZSRMU
+   ```
+
+The app reads `userData/.env` first; if `AIRTABLE_PAT` is missing there, it falls back to `<repo>/.env` (dev convenience).
+
+`bankers.json` (in the repo root) maps each bank's custodian code to the RM and backup CC. Update it as relationships change — it ships with the app.
 
 ---
 

@@ -28,11 +28,15 @@
       "icon": "assets/win-icon.ico"
     },
     "extraResources": [
-      "assets/**"
+      "assets/**",
+      "renderer/**",
+      "bankers.json"
     ]
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
     "yahoo-finance2": "^2.13.3"
   },
   "devDependencies": {

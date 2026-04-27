@@ -7,13 +7,20 @@
  */
 
 const { app, BrowserWindow } = require('electron');
-const { createServer, closeServer } = require('./server');
 const path = require('path');
 
 // 模块路径修正（解决打包环境依赖问题）
 // 说明：确保在不同打包环境下都能正确找到node_modules
 process.env.NODE_MODULE_PATH = path.join(__dirname, 'node_modules');
 require('module').globalPaths.push(process.env.NODE_MODULE_PATH);
+
+// Load .env: prefer userData (per-user, survives reinstall), fall back to repo root for dev.
+require('dotenv').config({ path: path.join(app.getPath('userData'), '.env') });
+if (!process.env.AIRTABLE_PAT) {
+    require('dotenv').config({ path: path.join(__dirname, '.env') });
+}
+
+const { createServer, closeServer } = require('./server');
 
 // 全局窗口引用
 let mainWindow = null;

@@ -1,141 +1,214 @@
-/**
- * 服务器模块 - 提供Web服务和金融市场数据接口
- * @module server
- * @requires express - Web框架
- * @requires yahoo-finance2 - 雅虎金融数据接口
- * @requires path - 路径处理模块
- */
-
 const express = require('express');
 const yahooFinance = require('yahoo-finance2').default;
+const fetch = require('node-fetch');
+const fs = require('fs');
 const path = require('path');
 
-// 全局变量存储HTTP服务器实例
 let httpServer = null;
 
-/**
- * 创建并配置Express服务器
- * @function createServer
- * @returns {Object} HTTP服务器实例
- * 
- * @description
- * 1. 配置静态文件服务
- * 2. 设置主路由返回前端页面
- * 3. 创建金融数据API端点
- * 4. 启动HTTP服务器监听3000端口
- */
-function createServer() {
-    // 初始化Express应用
-    const app = express();
+const ACCOUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
+let cachedAccounts = null;
+let cacheLoadedAt = 0;
+let cachedBankers = null;
 
-    // 配置静态文件中间件（服务前端资源）
-    // 注意：确保__dirname路径包含前端构建文件
+const FIELDS = {
+    accountNo: 'Account No',
+    acName: 'A/C Name',
+    copy: 'Copy',
+    custodian: 'Custodian',
+    book: 'Book',
+    status: 'Status',
+    loanInstruction: 'Loan Instruction',
+    pc: 'PC',
+    sc: 'SC',
+};
+
+function airtableHeaders() {
+    const pat = process.env.AIRTABLE_PAT;
+    if (!pat) throw new Error('AIRTABLE_PAT is not set. See .env.example.');
+    return { Authorization: `Bearer ${pat}` };
+}
+
+function emailFromUserField(value) {
+    if (!value) return '';
+    if (Array.isArray(value)) return value[0] && value[0].email ? value[0].email : '';
+    if (typeof value === 'object' && value.email) return value.email;
+    return '';
+}
+
+function normalizeAccount(record) {
+    const f = record.fields || {};
+    return {
+        id: record.id,
+        accountNo: f[FIELDS.accountNo] || '',
+        acName: f[FIELDS.acName] || '',
+        copy: f[FIELDS.copy] || '',
+        custodian: f[FIELDS.custodian] || '',
+        book: f[FIELDS.book] || '',
+        status: f[FIELDS.status] || '',
+        loanInstruction: f[FIELDS.loanInstruction] || '',
+        pcEmail: emailFromUserField(f[FIELDS.pc]),
+        scEmail: emailFromUserField(f[FIELDS.sc]),
+    };
+}
+
+async function loadAccountsFromAirtable() {
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const tableId = process.env.AIRTABLE_ACCOUNTS_TABLE_ID;
+    if (!baseId || !tableId) throw new Error('AIRTABLE_BASE_ID / AIRTABLE_ACCOUNTS_TABLE_ID not set.');
+
+    const fields = Object.values(FIELDS).map(n => `fields%5B%5D=${encodeURIComponent(n)}`).join('&');
+    const filter = `filterByFormula=${encodeURIComponent("{Status}='Opened'")}`;
+    const baseUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?pageSize=100&${fields}&${filter}`;
+
+    const all = [];
+    let offset;
+    do {
+        const url = offset ? `${baseUrl}&offset=${encodeURIComponent(offset)}` : baseUrl;
+        const res = await fetch(url, { headers: airtableHeaders() });
+        if (!res.ok) {
+            const body = await res.text();
+            throw new Error(`Airtable ${res.status}: ${body}`);
+        }
+        const json = await res.json();
+        for (const r of json.records) all.push(normalizeAccount(r));
+        offset = json.offset;
+    } while (offset);
+
+    return all;
+}
+
+async function getAccounts(forceRefresh = false) {
+    const now = Date.now();
+    if (forceRefresh || !cachedAccounts || now - cacheLoadedAt > ACCOUNTS_CACHE_TTL_MS) {
+        cachedAccounts = await loadAccountsFromAirtable();
+        cacheLoadedAt = now;
+    }
+    return cachedAccounts;
+}
+
+function searchAccounts(accounts, q) {
+    if (!q) return accounts.slice(0, 10);
+    const needle = String(q).toLowerCase();
+    const scored = [];
+    for (const a of accounts) {
+        const copy = (a.copy || '').toLowerCase();
+        const acno = (a.accountNo || '').toLowerCase();
+        const name = (a.acName || '').toLowerCase();
+        let score = -1;
+        if (copy === needle || acno === needle) score = 0;
+        else if (copy.startsWith(needle) || acno.startsWith(needle)) score = 1;
+        else if (copy.includes(needle) || acno.includes(needle)) score = 2;
+        else if (name.includes(needle)) score = 3;
+        if (score >= 0) scored.push({ score, a });
+    }
+    scored.sort((x, y) => x.score - y.score);
+    return scored.slice(0, 10).map(s => s.a);
+}
+
+function loadBankers() {
+    if (cachedBankers) return cachedBankers;
+    const candidates = [
+        path.join(__dirname, 'bankers.json'),
+        path.join(process.resourcesPath || __dirname, 'bankers.json'),
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            cachedBankers = JSON.parse(fs.readFileSync(p, 'utf8'));
+            return cachedBankers;
+        }
+    }
+    cachedBankers = {};
+    return cachedBankers;
+}
+
+function createServer() {
+    const app = express();
+    app.use(express.json());
     app.use(express.static(path.join(__dirname)));
 
-    /**
-     * 主路由 - 返回前端单页应用入口文件
-     * @name GET /
-     * @description 服务前端应用的HTML入口文件
-     */
     app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'index.html'));
     });
 
-    /**
-     * 金融市场价格数据API端点
-     * @name GET /api/price/:pair
-     * @param {string} pair - 货币对代码（例如USDJPY）
-     * 
-     * @description
-     * 1. 接收货币对参数并转换为雅虎金融格式（追加=X后缀）
-     * 2. 获取最近24小时内的30分钟间隔数据
-     * 3. 过滤无效数据点
-     * 4. 格式化日期和价格数据
-     * 
-     * @returns {Object[]} 格式化的价格数据数组
-     * @example
-     * [
-     *   { date: "09:30", close: 134.56 },
-     *   { date: "10:00", close: 134.61 }
-     * ]
-     */
     app.get('/api/price/:pair', async (req, res) => {
-        // 构造雅虎金融要求的货币对格式（示例：USDJPY=X）
         const pair = req.params.pair + '=X';
-        
         try {
-            // 设置时间范围（最近24小时）
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
-
-            // 调用雅虎金融API获取图表数据
             const result = await yahooFinance.chart(pair, {
-                period1: startDate,  // 起始时间
-                period2: endDate,    // 结束时间
-                interval: '30m'      // 30分钟间隔
+                period1: startDate,
+                period2: endDate,
+                interval: '30m'
             });
-
-            // 数据清洗与格式化
             const formattedData = result.quotes
-                // 过滤掉收盘价为null的数据点
                 .filter(q => q.close != null)
-                // 转换时间格式和价格精度
                 .map(q => ({
-                    date: new Date(q.date).toLocaleTimeString([], { 
-                        hour: '2-digit',   // 12小时制
-                        minute: '2-digit'  // 补零分钟数
-                    }),
-                    close: Number(q.close.toFixed(4))  // 保留4位小数
+                    date: new Date(q.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    close: Number(q.close.toFixed(4))
                 }));
-
             res.json(formattedData);
         } catch (error) {
-            // 错误处理（记录日志并返回500状态）
             console.error('API Error:', error);
-            res.status(500).json({ 
-                error: error.message || 'Failed to fetch price data' 
-            });
+            res.status(500).json({ error: error.message || 'Failed to fetch price data' });
         }
     });
 
-    // 启动HTTP服务器并存储实例引用
+    app.get('/api/accounts', async (req, res) => {
+        try {
+            const accounts = await getAccounts();
+            res.json(searchAccounts(accounts, req.query.q));
+        } catch (e) {
+            console.error('GET /api/accounts:', e.message);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.get('/api/accounts/:copy', async (req, res) => {
+        try {
+            const accounts = await getAccounts();
+            const hit = accounts.find(a => a.copy === req.params.copy);
+            if (!hit) return res.status(404).json({ error: 'Not found' });
+            res.json(hit);
+        } catch (e) {
+            console.error('GET /api/accounts/:copy:', e.message);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.post('/api/accounts/refresh', async (req, res) => {
+        try {
+            const accounts = await getAccounts(true);
+            res.json({ count: accounts.length, refreshedAt: new Date().toISOString() });
+        } catch (e) {
+            console.error('POST /api/accounts/refresh:', e.message);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.get('/api/bankers/:custodian', (req, res) => {
+        const all = loadBankers();
+        const entry = all[req.params.custodian] || { to: [], ccBackup: [] };
+        res.json(entry);
+    });
+
     httpServer = app.listen(3000);
     return httpServer;
 }
 
-/**
- * 关闭HTTP服务器
- * @function closeServer
- * @description 
- * 1. 安全关闭HTTP服务器
- * 2. 清理服务器实例引用
- * 3. 输出关闭日志
- */
 function closeServer() {
     if (httpServer) {
         httpServer.close(() => {
             console.log('HTTP server closed');
-            httpServer = null;  // 清除实例引用
+            httpServer = null;
         });
     }
 }
 
-// 模块导出（支持被其他模块调用）
-module.exports = { 
-    createServer,  // 用于程序化启动服务器
-    closeServer    // 用于程序化关闭服务器
-};
+module.exports = { createServer, closeServer };
 
-/**
- * 直接启动模式 - 当文件被直接运行时启动服务器
- * @description
- * 检测是否是直接通过node启动（非模块引入方式）
- * 便于开发调试时的直接启动：node server.js
- */
 if (require.main === module) {
     createServer().on('listening', () => {
-      console.log(`Server running on http://localhost:3000`);
-      console.log(`API Endpoint: http://localhost:3000/api/price/:pair`);
-      console.log(`Press CTRL+C to stop`);
+        console.log(`Server running on http://localhost:3000`);
     });
 }
