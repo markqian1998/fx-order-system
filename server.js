@@ -171,26 +171,45 @@ function createServer() {
         res.sendFile(path.join(__dirname, 'index.html'));
     });
 
-    app.get('/api/price/:pair', async (req, res) => {
-        const pair = req.params.pair + '=X';
+    // Per-pair price cache to dedupe rapid requests (Yahoo rate-limits aggressively).
+    const PRICE_CACHE_TTL_MS = 60 * 1000;
+    const priceCache = new Map();
+
+    async function fetchYahooWithRetry(pair, attempt = 0) {
         try {
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
-            const result = await yahooFinance.chart(pair, {
-                period1: startDate,
-                period2: endDate,
-                interval: '30m'
+            return await yahooFinance.chart(pair, {
+                period1: startDate, period2: endDate, interval: '30m'
             });
+        } catch (e) {
+            if (attempt < 2) {
+                await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+                return fetchYahooWithRetry(pair, attempt + 1);
+            }
+            throw e;
+        }
+    }
+
+    app.get('/api/price/:pair', async (req, res) => {
+        const pair = req.params.pair + '=X';
+        const cached = priceCache.get(pair);
+        if (cached && Date.now() - cached.at < PRICE_CACHE_TTL_MS) {
+            return res.json(cached.data);
+        }
+        try {
+            const result = await fetchYahooWithRetry(pair);
             const formattedData = result.quotes
                 .filter(q => q.close != null)
                 .map(q => ({
                     date: new Date(q.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     close: Number(q.close.toFixed(4))
                 }));
+            priceCache.set(pair, { at: Date.now(), data: formattedData });
             res.json(formattedData);
         } catch (error) {
-            console.error('API Error:', error);
-            res.status(500).json({ error: error.message || 'Failed to fetch price data' });
+            console.error('API Error:', error.message);
+            res.status(503).json({ error: error.message || 'Failed to fetch price data' });
         }
     });
 

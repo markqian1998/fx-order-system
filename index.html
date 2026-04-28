@@ -228,143 +228,159 @@
         function addOrder() {
             const ordersDiv = document.getElementById('orders');
             const orderIndex = ordersDiv.children.length + 1;
+            const i = orderIndex;
+            const ccyOptions = ['USD','EUR','JPY','GBP','CAD','AUD','NZD','CHF','HKD','CNH','KRW','TWD','SGD']
+                .map(c => `<option value="${c}">${c}</option>`).join('');
+
             const orderHtml = `
-                <div class="order" id="order${orderIndex}">
-                    <h3>Order ${orderIndex}
-                        <button class="btn btn-danger btn-sm float-end" onclick="deleteOrder(${orderIndex})">Delete</button>
+                <div class="order" id="order${i}">
+                    <h3>Order ${i}
+                        <span class="float-end">
+                            <button class="btn btn-secondary btn-sm me-1" onclick="replicateOrder(${i})">Replicate</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteOrder(${i})">Delete</button>
+                        </span>
                     </h3>
+
                     <div class="mb-3">
-                        <label class="form-label">Order Type:</label>
-                        <div>
-                            <input type="radio" name="orderType${orderIndex}" value="market" id="market${orderIndex}" checked>
-                            <label for="market${orderIndex}">Market</label>
-                            <input type="radio" name="orderType${orderIndex}" value="limit" id="limit${orderIndex}">
-                            <label for="limit${orderIndex}">Limit</label>
+                        <label class="form-label d-block">Order Type</label>
+                        <div class="btn-group btn-group-lg" role="group">
+                            <input type="radio" class="btn-check" name="orderType${i}" id="market${i}" value="market" checked>
+                            <label class="btn btn-outline-primary" for="market${i}" style="min-width:8rem;">Market</label>
+                            <input type="radio" class="btn-check" name="orderType${i}" id="limit${i}" value="limit">
+                            <label class="btn btn-outline-primary" for="limit${i}" style="min-width:8rem;">Limit</label>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="buyCurrency${orderIndex}" class="form-label">Buy Currency:</label>
-                        <select id="buyCurrency${orderIndex}" class="form-select">
-                            ${['USD','JPY','HKD','CNH','CHF','EUR','GBP','AUD','NZD'].map(c => `<option value="${c}">${c}</option>`).join('')}
-                        </select>
+
+                    <div class="row">
+                        <div class="mb-3 col-md-3">
+                            <label class="form-label">Buy</label>
+                            <select id="buyCurrency${i}" class="form-select">${ccyOptions}</select>
+                        </div>
+                        <div class="mb-3 col-md-3">
+                            <label class="form-label">Sell</label>
+                            <select id="sellCurrency${i}" class="form-select">${ccyOptions}</select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end mb-3">
+                            <div id="ccyError${i}" class="text-danger small" style="display:none;">Buy and Sell cannot be the same currency.</div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="sellCurrency${orderIndex}" class="form-label">Sell Currency:</label>
-                        <select id="sellCurrency${orderIndex}" class="form-select">
-                            ${['USD','JPY','HKD','CNH','CHF','EUR','GBP','AUD','NZD'].map(c => `<option value="${c}">${c}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="notionalAmount${orderIndex}" class="form-label">Notional Amount:</label>
-                        <div class="input-group">
-                            <select id="notionalCurrency${orderIndex}" class="form-select">
-                                ${['USD','JPY','HKD','CNH','CHF','EUR','GBP','AUD','NZD'].map(c => `<option value="${c}">${c}</option>`).join('')}
-                            </select>
-                            <input type="text" id="notionalAmount${orderIndex}" class="form-control"
-                                   placeholder="e.g., 3000000 or 400.59"
+
+                    <div class="row">
+                        <div class="mb-3 col-md-2">
+                            <label class="form-label">Notional CCY</label>
+                            <select id="notionalCurrency${i}" class="form-select"></select>
+                        </div>
+                        <div class="mb-3 col-md-4">
+                            <label class="form-label">Amount</label>
+                            <input type="text" id="notionalAmount${i}" class="form-control"
+                                   placeholder="e.g., 1,000,000"
                                    oninput="this.value = formatNotional(this.value)">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="marketType${orderIndex}" class="form-label">Market Type:</label>
-                        <select id="marketType${orderIndex}" class="form-select">
-                            <option value="Today">Tenor Today</option>
-                            <option value="Tomorrow">Tenor Tomorrow</option>
-                            <option value="Spot">Tenor Spot</option>
-                        </select>
-                    </div>
-                    <div class="mb-3 marketFields" id="marketFields${orderIndex}">
-                        <label for="spread${orderIndex}" class="form-label">Spread (bps):</label>
-                        <input type="number" id="spread${orderIndex}" class="form-control" placeholder="e.g., 20">
-                        <label for="marketCurrencyPair${orderIndex}" class="form-label mt-3">Currency Pair:</label>
-                        <select id="marketCurrencyPair${orderIndex}" class="form-select">
-                            <option value="">--Please Select The Corresponding Currency Pair --</option>
-                        </select>
-                        <div class="chart-container">
-                            <canvas id="marketChart${orderIndex}"></canvas>
+
+                    <div class="row">
+                        <div class="mb-3 col-md-3">
+                            <label class="form-label">Tenor</label>
+                            <select id="marketType${i}" class="form-select">
+                                <option value="Today">Today</option>
+                                <option value="Tomorrow">Tomorrow</option>
+                                <option value="Spot" selected>Spot</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 col-md-4">
+                            <label class="form-label">Spread</label>
+                            <div class="input-group">
+                                <input type="number" id="spread${i}" class="form-control" value="20" min="0">
+                                <select id="spreadUnit${i}" class="form-select" style="max-width:6rem;">
+                                    <option value="bps" selected>bps</option>
+                                    <option value="pips">pips</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    <div class="mb-3 limitFields hidden" id="limitFields${orderIndex}">
-                        <label for="currencyPair${orderIndex}" class="form-label">Currency Pair:</label>
-                        <select id="currencyPair${orderIndex}" class="form-select">
-                            <option value="">--Please Select The Corresponding Currency Pair --</option>
-                        </select>
-                        <label for="limitPrice${orderIndex}" class="form-label">Limit Price:</label>
-                        <input type="text" id="limitPrice${orderIndex}" class="form-control" placeholder="e.g., 10.6989">
-                        <label for="goodTill${orderIndex}" class="form-label">Good Till:</label>
-                        <input type="text" id="goodTill${orderIndex}" class="form-control" placeholder="Select date">
-                        <label for="spreadLimit${orderIndex}" class="form-label">Spread (bps):</label>
-                        <input type="number" id="spreadLimit${orderIndex}" class="form-control" placeholder="e.g., 20">
+
+                    <div class="limitFields hidden" id="limitFields${i}">
+                        <div class="row">
+                            <div class="mb-3 col-md-3">
+                                <label class="form-label">Limit Price</label>
+                                <input type="text" id="limitPrice${i}" class="form-control" placeholder="e.g., 10.6989">
+                            </div>
+                            <div class="mb-3 col-md-4">
+                                <label class="form-label">Good Till</label>
+                                <input type="text" id="goodTill${i}" class="form-control" placeholder="Select date">
+                            </div>
+                            <div class="mb-3 col-md-3 d-flex align-items-end">
+                                <div class="text-muted small">Pair: <strong id="pairLabel${i}">—</strong></div>
+                            </div>
+                        </div>
                         <div class="chart-container">
-                            <canvas id="chart${orderIndex}"></canvas>
+                            <canvas id="chart${i}"></canvas>
+                            <div id="chartError${i}" class="alert alert-warning" style="display:none;"></div>
                         </div>
                     </div>
                 </div>
             `;
             ordersDiv.insertAdjacentHTML('beforeend', orderHtml);
 
-            const buySelect = document.getElementById(`buyCurrency${orderIndex}`);
-            const sellSelect = document.getElementById(`sellCurrency${orderIndex}`);
-            const notionalSelect = document.getElementById(`notionalCurrency${orderIndex}`);
+            const buySelect = document.getElementById(`buyCurrency${i}`);
+            const sellSelect = document.getElementById(`sellCurrency${i}`);
+            const notionalSelect = document.getElementById(`notionalCurrency${i}`);
+            const ccyError = document.getElementById(`ccyError${i}`);
+            const pairLabel = document.getElementById(`pairLabel${i}`);
+            const spreadInput = document.getElementById(`spread${i}`);
+            const spreadUnit = document.getElementById(`spreadUnit${i}`);
 
-            const updateNotionalOptions = () => {
-                const allowedCurrencies = [...new Set([buySelect.value, sellSelect.value])];
-                notionalSelect.innerHTML = '';
-                allowedCurrencies.forEach(currency => {
-                    const option = document.createElement('option');
-                    option.value = currency;
-                    option.text = currency;
-                    notionalSelect.add(option);
-                });
-            };
-            buySelect.addEventListener('change', updateNotionalOptions);
-            sellSelect.addEventListener('change', updateNotionalOptions);
-            updateNotionalOptions();
+            // sensible defaults: Buy USD, Sell JPY (avoid same-ccy on first paint)
+            sellSelect.value = 'JPY';
 
-            const updateCurrencyPairs = () => {
+            const refresh = () => {
                 const buy = buySelect.value;
                 const sell = sellSelect.value;
-                const marketPairSelect = document.getElementById(`marketCurrencyPair${orderIndex}`);
-                const limitPairSelect = document.getElementById(`currencyPair${orderIndex}`);
-                marketPairSelect.innerHTML = '<option value="">--Please Select The Corresponding Currency Pair --</option>';
-                limitPairSelect.innerHTML = '<option value="">--Please Select The Corresponding Currency Pair --</option>';
-                if (buy && sell && buy !== sell) {
-                    marketPairSelect.add(new Option(`${buy}${sell}`, `${buy}${sell}`));
-                    marketPairSelect.add(new Option(`${sell}${buy}`, `${sell}${buy}`));
-                    limitPairSelect.add(new Option(`${buy}${sell}`, `${buy}${sell}`));
-                    limitPairSelect.add(new Option(`${sell}${buy}`, `${sell}${buy}`));
+                const same = buy && sell && buy === sell;
+                ccyError.style.display = same ? 'block' : 'none';
+
+                // Notional CCY: only Buy + Sell are valid choices
+                const allowed = [...new Set([buy, sell])].filter(Boolean);
+                notionalSelect.innerHTML = '';
+                allowed.forEach(c => notionalSelect.add(new Option(c, c)));
+
+                // Auto-derived pair (Buy + Sell)
+                pairLabel.textContent = same || !buy || !sell ? '—' : `${buy}${sell}`;
+
+                // Refresh chart if currently in limit mode and pair is valid
+                if (!same && buy && sell) {
+                    const limitFields = document.getElementById(`limitFields${i}`);
+                    if (!limitFields.classList.contains('hidden')) {
+                        fetchPriceData(`${buy}${sell}`, i, 'chart');
+                    }
                 }
             };
-            buySelect.addEventListener('change', updateCurrencyPairs);
-            sellSelect.addEventListener('change', updateCurrencyPairs);
-            updateCurrencyPairs();
+            buySelect.addEventListener('change', refresh);
+            sellSelect.addEventListener('change', refresh);
+            refresh();
 
-            const input = document.querySelector(`#goodTill${orderIndex}`);
+            // Spread default flips with unit (bps→20, pips→10)
+            spreadUnit.addEventListener('change', () => {
+                spreadInput.value = spreadUnit.value === 'bps' ? '20' : '10';
+            });
+
+            // flatpickr for Good Till
+            const goodTill = document.querySelector(`#goodTill${i}`);
             const defaultDate = new Date(new Date().setDate(new Date().getDate() + 14));
-            flatpickr(input, {
-                defaultDate: defaultDate,
-                dateFormat: "d M Y",
-                onChange: function(selectedDates, dateStr, instance) {
-                    instance.input.value = dateStr + " NY 5pm";
-                }
+            flatpickr(goodTill, {
+                defaultDate,
+                dateFormat: 'd M Y',
+                onChange: (_dates, dateStr, instance) => { instance.input.value = dateStr + ' NY 5pm'; },
             });
-            const formattedDate = flatpickr.formatDate(defaultDate, "d M Y");
-            input.value = formattedDate + " NY 5pm";
+            goodTill.value = flatpickr.formatDate(defaultDate, 'd M Y') + ' NY 5pm';
 
-            document.querySelectorAll(`input[name="orderType${orderIndex}"]`).forEach(radio => {
+            // Toggle Market vs Limit
+            document.querySelectorAll(`input[name="orderType${i}"]`).forEach(radio => {
                 radio.addEventListener('change', function() {
-                    const marketFields = document.getElementById(`marketFields${orderIndex}`);
-                    const limitFields = document.getElementById(`limitFields${orderIndex}`);
-                    marketFields.classList.toggle('hidden', this.value !== 'market');
+                    const limitFields = document.getElementById(`limitFields${i}`);
                     limitFields.classList.toggle('hidden', this.value !== 'limit');
+                    if (this.value === 'limit') refresh(); // load chart on first switch
                 });
-            });
-
-            document.getElementById(`currencyPair${orderIndex}`).addEventListener('change', function() {
-                fetchPriceData(this.value, orderIndex, 'chart');
-            });
-            document.getElementById(`marketCurrencyPair${orderIndex}`).addEventListener('change', function() {
-                fetchPriceData(this.value, orderIndex, 'marketChart');
             });
         }
 
@@ -373,15 +389,72 @@
             orderDiv.remove();
         }
 
+        function replicateOrder(srcIndex) {
+            const src = document.getElementById(`order${srcIndex}`);
+            if (!src) return;
+
+            const captured = {
+                orderType: src.querySelector(`input[name="orderType${srcIndex}"]:checked`)?.value || 'market',
+                buy:        src.querySelector(`#buyCurrency${srcIndex}`)?.value,
+                sell:       src.querySelector(`#sellCurrency${srcIndex}`)?.value,
+                notionalCcy:src.querySelector(`#notionalCurrency${srcIndex}`)?.value,
+                amount:     src.querySelector(`#notionalAmount${srcIndex}`)?.value,
+                tenor:      src.querySelector(`#marketType${srcIndex}`)?.value,
+                spread:     src.querySelector(`#spread${srcIndex}`)?.value,
+                spreadUnit: src.querySelector(`#spreadUnit${srcIndex}`)?.value,
+                limitPrice: src.querySelector(`#limitPrice${srcIndex}`)?.value,
+                goodTill:   src.querySelector(`#goodTill${srcIndex}`)?.value,
+            };
+
+            addOrder();
+            const newIndex = document.getElementById('orders').children.length;
+            const dst = document.getElementById(`order${newIndex}`);
+
+            // Order type — flip + dispatch change so Limit fields show/hide
+            const otRadio = dst.querySelector(`input[name="orderType${newIndex}"][value="${captured.orderType}"]`);
+            if (otRadio) { otRadio.checked = true; otRadio.dispatchEvent(new Event('change')); }
+
+            // Buy/Sell — dispatch change so refresh() updates notional options + pair label + chart
+            const dstBuy  = dst.querySelector(`#buyCurrency${newIndex}`);
+            const dstSell = dst.querySelector(`#sellCurrency${newIndex}`);
+            if (captured.buy)  dstBuy.value  = captured.buy;
+            if (captured.sell) dstSell.value = captured.sell;
+            dstBuy.dispatchEvent(new Event('change'));
+
+            // Notional CCY — restore (refresh just rebuilt the options to [buy, sell])
+            const dstNotional = dst.querySelector(`#notionalCurrency${newIndex}`);
+            if (captured.notionalCcy && [...dstNotional.options].some(o => o.value === captured.notionalCcy)) {
+                dstNotional.value = captured.notionalCcy;
+            }
+
+            // Plain inputs
+            dst.querySelector(`#notionalAmount${newIndex}`).value = captured.amount || '';
+            dst.querySelector(`#spread${newIndex}`).value = captured.spread || '';
+            dst.querySelector(`#spreadUnit${newIndex}`).value = captured.spreadUnit || 'bps';
+            dst.querySelector(`#marketType${newIndex}`).value = captured.tenor || 'Spot';
+
+            if (captured.orderType === 'limit') {
+                dst.querySelector(`#limitPrice${newIndex}`).value = captured.limitPrice || '';
+                if (captured.goodTill) dst.querySelector(`#goodTill${newIndex}`).value = captured.goodTill;
+            }
+        }
+
         async function fetchPriceData(pair, index, chartType) {
+            const canvas = document.getElementById(`${chartType}${index}`);
+            const errEl = document.getElementById(`chartError${index}`);
+            if (errEl) errEl.style.display = 'none';
+            if (canvas) canvas.style.display = '';
+
             try {
                 const response = await fetch(`/api/price/${pair}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+                    throw new Error(body.error || `HTTP ${response.status}`);
+                }
                 const data = await response.json();
-                if (!data || data.length === 0) throw new Error('No data');
+                if (!data || data.length === 0) throw new Error('No data returned');
                 const labels = data.map(d => d.date);
                 const prices = data.map(d => d.close);
-                const canvas = document.getElementById(`${chartType}${index}`);
                 if (canvas.chart) canvas.chart.destroy();
                 canvas.chart = new Chart(canvas.getContext('2d'), {
                     type: 'line',
@@ -389,9 +462,12 @@
                     options: { responsive: true, scales: { x: { display: true }, y: { ticks: { callback: v => v.toFixed(4) } } } }
                 });
             } catch (error) {
-                console.error(`[Order ${index}]`, error);
-                document.getElementById(`${chartType}${index}`).innerHTML =
-                    `<div class="alert alert-danger">Chart error: ${error.message}</div>`;
+                console.error(`[Order ${index}] chart fetch failed:`, error);
+                if (canvas) canvas.style.display = 'none';
+                if (errEl) {
+                    errEl.style.display = 'block';
+                    errEl.textContent = `Chart unavailable for ${pair}: ${error.message}. (Yahoo Finance often rate-limits — try again in a minute.)`;
+                }
             }
         }
 
@@ -420,6 +496,17 @@
             let marketCounter = 0, limitCounter = 0;
             let orderTexts = [];
 
+            for (let idx = 0; idx < orders.length; idx++) {
+                const order = orders[idx];
+                const i = idx + 1;
+                const buy = order.querySelector(`#buyCurrency${i}`)?.value || '';
+                const sell = order.querySelector(`#sellCurrency${i}`)?.value || '';
+                if (buy && sell && buy === sell) {
+                    alert(`Order ${i}: Buy and Sell cannot be the same currency.`);
+                    return;
+                }
+            }
+
             orders.forEach((order, index) => {
                 const currentIndex = index + 1;
                 try {
@@ -428,20 +515,20 @@
                     const sellCurrency = order.querySelector(`#sellCurrency${currentIndex}`)?.value || 'N/A';
                     const notionalAmount = order.querySelector(`#notionalAmount${currentIndex}`)?.value.replace(/,/g, '') || '0';
                     const notionalCurrency = order.querySelector(`#notionalCurrency${currentIndex}`)?.value || 'USD';
-                    const marketType = order.querySelector(`#marketType${currentIndex}`)?.value || 'Spot';
+                    const tenor = order.querySelector(`#marketType${currentIndex}`)?.value || 'Spot';
+                    const spread = order.querySelector(`#spread${currentIndex}`)?.value || 'N/A';
+                    const spreadUnit = order.querySelector(`#spreadUnit${currentIndex}`)?.value || 'bps';
+                    const pair = `${buyCurrency}${sellCurrency}`;
 
                     let orderText = '';
                     if (orderType === 'market') {
                         marketCounter++;
-                        const spread = order.querySelector(`#spread${currentIndex}`)?.value || 'N/A';
-                        orderText = `**FX Market Order ${marketCounter}**\nBuy ${buyCurrency}\nSell ${sellCurrency}\nNotional ${notionalCurrency} ${formatNotional(notionalAmount)}\nAt Market, Tenor ${marketType}\nSpread: ${spread}bps`;
+                        orderText = `**FX Market Order ${marketCounter}**\nBuy ${buyCurrency}\nSell ${sellCurrency}\nNotional ${notionalCurrency} ${formatNotional(notionalAmount)}\nAt Market, Tenor ${tenor}\nSpread: ${spread}${spreadUnit}`;
                     } else {
                         limitCounter++;
-                        const currencyPair = order.querySelector(`#currencyPair${currentIndex}`)?.value || 'N/A';
                         const limitPrice = order.querySelector(`#limitPrice${currentIndex}`)?.value || 'N/A';
                         const goodTill = order.querySelector(`#goodTill${currentIndex}`)?.value || 'N/A';
-                        const spreadLimit = order.querySelector(`#spreadLimit${currentIndex}`)?.value || 'N/A';
-                        orderText = `**FX Limit Order ${limitCounter}**\nBuy ${buyCurrency}\nSell ${sellCurrency}\nNotional ${notionalCurrency} ${formatNotional(notionalAmount)}\nAt Limit ${currencyPair} = ${limitPrice}, Tenor ${marketType}\nGood til ${goodTill}\nSpread: ${spreadLimit}bps`;
+                        orderText = `**FX Limit Order ${limitCounter}**\nBuy ${buyCurrency}\nSell ${sellCurrency}\nNotional ${notionalCurrency} ${formatNotional(notionalAmount)}\nAt Limit ${pair} = ${limitPrice}, Tenor ${tenor}\nGood til ${goodTill}\nSpread: ${spread}${spreadUnit}`;
                     }
                     orderTexts.push(orderText);
                 } catch (error) {
