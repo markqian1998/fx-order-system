@@ -35,13 +35,13 @@
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cd" type="button">Call Deposit</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ftd" type="button" disabled title="Coming in Phase 2">FTD Deposit</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ftd" type="button">FTD Deposit</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ool" type="button" disabled title="Coming in Phase 2">One-off Loan</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ool" type="button">One-off Loan</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-si" type="button" disabled title="Coming in Phase 2">SI Loan</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-si" type="button">SI Loan</button>
         </li>
     </ul>
 
@@ -114,10 +114,103 @@
             <button id="cdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
         </div>
 
-        <!-- Phase 2 stubs -->
-        <div class="tab-pane fade" id="tab-ftd" role="tabpanel"><p class="text-muted">FTD Deposit — coming in Phase 2.</p></div>
-        <div class="tab-pane fade" id="tab-ool" role="tabpanel"><p class="text-muted">One-off Loan — coming in Phase 2.</p></div>
-        <div class="tab-pane fade" id="tab-si" role="tabpanel"><p class="text-muted">SI Loan — coming in Phase 2.</p></div>
+        <!-- FTD Deposit tab -->
+        <div class="tab-pane fade" id="tab-ftd" role="tabpanel">
+            <div id="ftdAccountPicker"></div>
+            <div class="row">
+                <div class="mb-3 col-md-2">
+                    <label for="ftdCcy" class="form-label">Currency</label>
+                    <select id="ftdCcy" class="form-select"></select>
+                </div>
+                <div class="mb-3 col-md-4">
+                    <label for="ftdAmount" class="form-label">Amount</label>
+                    <input type="text" id="ftdAmount" class="form-control" placeholder="e.g., 6,680,810.38">
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="ftdTenor" class="form-label">Tenor</label>
+                    <select id="ftdTenor" class="form-select"></select>
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="ftdRate" class="form-label">Rate (optional)</label>
+                    <div class="input-group">
+                        <input type="text" id="ftdRate" class="form-control" placeholder="e.g., 3.586" inputmode="decimal">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="mb-3 col-md-3">
+                    <label for="ftdValueDate" class="form-label">Value</label>
+                    <input type="text" id="ftdValueDate" class="form-control" placeholder="Today">
+                </div>
+            </div>
+            <button id="ftdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+        </div>
+
+        <!-- One-off Loan tab -->
+        <div class="tab-pane fade" id="tab-ool" role="tabpanel">
+            <div id="oolAccountPicker"></div>
+            <div class="row">
+                <div class="mb-3 col-md-2">
+                    <label for="oolCcy" class="form-label">Currency</label>
+                    <select id="oolCcy" class="form-select"></select>
+                </div>
+                <div class="mb-3 col-md-4">
+                    <label for="oolAmount" class="form-label">Amount</label>
+                    <input type="text" id="oolAmount" class="form-control" placeholder="e.g., 384,415.96">
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="oolStartDate" class="form-label">Start Date</label>
+                    <input type="text" id="oolStartDate" class="form-control" placeholder="Today">
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="oolEndDate" class="form-label">End Date (til)</label>
+                    <input type="text" id="oolEndDate" class="form-control" placeholder="Select end date">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="oolPurpose" class="form-label">Purpose</label>
+                <input type="text" id="oolPurpose" class="form-control" value="to cover OD">
+            </div>
+            <button id="oolGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+        </div>
+
+        <!-- SI Loan tab -->
+        <div class="tab-pane fade" id="tab-si" role="tabpanel">
+            <div id="siAccountPicker"></div>
+            <div class="row">
+                <div class="mb-3 col-md-2">
+                    <label for="siCcy" class="form-label">Currency</label>
+                    <select id="siCcy" class="form-select"></select>
+                </div>
+                <div class="mb-3 col-md-4">
+                    <label for="siAmount" class="form-label">Amount</label>
+                    <input type="text" id="siAmount" class="form-control" placeholder="e.g., 398,376,250">
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="siStartDate" class="form-label">Start Date</label>
+                    <input type="text" id="siStartDate" class="form-control" placeholder="Today">
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="siRolling" class="form-label">Rolling</label>
+                    <select id="siRolling" class="form-select">
+                        <option value="weekly" selected>weekly</option>
+                        <option value="monthly">monthly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="mb-3 col-md-6">
+                    <label for="siLoanInstruction" class="form-label">Loan Instruction <span class="text-muted small">(auto-filled from account, editable)</span></label>
+                    <input type="text" id="siLoanInstruction" class="form-control" placeholder="e.g., P+I+-Bal.">
+                </div>
+                <div class="mb-3 col-md-6">
+                    <label for="siPurpose" class="form-label">Purpose</label>
+                    <input type="text" id="siPurpose" class="form-control" value="to cover OD">
+                </div>
+            </div>
+            <button id="siGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+        </div>
     </div>
 
     <!-- Third-party scripts -->
@@ -440,6 +533,209 @@
                     PoseidonCommon.showWarningModal({
                         title: 'Amount below 50,000 USD',
                         body: `Call Deposit Place is typically reserved for amounts ≥ USD 50,000. Current amount: USD ${amountInput.value}. Continue anyway?`,
+                        onContinue: buildAndSend,
+                    });
+                } else {
+                    buildAndSend();
+                }
+            });
+        })();
+
+        // ===== Shared helpers for the loan / FTD tabs =====
+        const ALL_CCY_LIST = ['USD','EUR','JPY','GBP','CAD','AUD','NZD','CHF','HKD','CNH','KRW','TWD','SGD'];
+
+        function fillCurrencySelect(select, defaultCcy = 'USD') {
+            ALL_CCY_LIST.forEach(c => select.add(new Option(c, c)));
+            select.value = defaultCcy;
+        }
+
+        function attachAmountFormatter(input) {
+            input.addEventListener('input', () => { input.value = PoseidonCommon.formatNotional(input.value); });
+        }
+
+        function buildCcList(cp, account) {
+            return [
+                ...(cp.ccBackup || []),
+                'fa@ppgfo.com',
+                ...(account.pcEmail ? [account.pcEmail] : []),
+            ];
+        }
+
+        // ===== FTD Deposit tab =====
+        (function initFtdDeposit() {
+            const ccySelect = document.getElementById('ftdCcy');
+            const amountInput = document.getElementById('ftdAmount');
+            const tenorSelect = document.getElementById('ftdTenor');
+            const rateInput = document.getElementById('ftdRate');
+            const valueDateInput = document.getElementById('ftdValueDate');
+            const generateBtn = document.getElementById('ftdGenerate');
+
+            const TENORS = [
+                '1 week', '2 week',
+                '1 month', '2 month', '3 month', '4 month', '5 month', '6 month',
+                '7 month', '8 month', '9 month', '10 month', '11 month', '12 month',
+                '18 month', '2y', '3y',
+            ];
+            TENORS.forEach(t => tenorSelect.add(new Option(t, t)));
+            tenorSelect.value = '1 month';
+
+            fillCurrencySelect(ccySelect);
+            attachAmountFormatter(amountInput);
+
+            const today = new Date();
+            flatpickr(valueDateInput, { defaultDate: today, dateFormat: 'd M Y' });
+            valueDateInput.value = flatpickr.formatDate(today, 'd M Y');
+
+            const picker = PoseidonAccountPicker.mountAccountPicker(
+                document.getElementById('ftdAccountPicker'),
+                () => { generateBtn.disabled = false; }
+            );
+
+            generateBtn.addEventListener('click', async () => {
+                const account = picker.getSelected();
+                if (!account) return;
+                const sub = picker.getSubAccount();
+                const ccy = ccySelect.value;
+                const rawAmount = amountInput.value.trim();
+                const tenor = tenorSelect.value;
+                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { alert('Please enter a valid amount.'); return; }
+                if (!tenor) { alert('Please pick a tenor.'); return; }
+
+                const cp = await PoseidonCounterparty.getCounterparty(account);
+                // UBS CH accounts are booked at UBS Jersey
+                const bookingEntity = (account.custodian === 'UBS' && account.book === 'CH') ? 'UBS Jersey' : '';
+                const tpl = PoseidonTemplates.ftdDeposit({
+                    salutation: PoseidonCounterparty.counterpartySalutation(cp),
+                    book: account.book,
+                    copy: account.copy || account.accountNo,
+                    sub,
+                    acName: account.acName,
+                    ccy,
+                    amount: rawAmount,
+                    tenor,
+                    rate: rateInput.value.trim(),
+                    bookingEntity,
+                });
+                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
+            });
+        })();
+
+        // ===== One-off Loan tab =====
+        (function initOneOffLoan() {
+            const ccySelect = document.getElementById('oolCcy');
+            const amountInput = document.getElementById('oolAmount');
+            const startDateInput = document.getElementById('oolStartDate');
+            const endDateInput = document.getElementById('oolEndDate');
+            const purposeInput = document.getElementById('oolPurpose');
+            const generateBtn = document.getElementById('oolGenerate');
+
+            fillCurrencySelect(ccySelect);
+            attachAmountFormatter(amountInput);
+
+            const today = new Date();
+            flatpickr(startDateInput, { defaultDate: today, dateFormat: 'j M Y' });
+            startDateInput.value = flatpickr.formatDate(today, 'j M Y');
+
+            const defaultEnd = new Date(today.getTime() + 7 * 86400000);
+            flatpickr(endDateInput, {
+                defaultDate: defaultEnd,
+                dateFormat: 'j M Y',
+                position: 'auto right',
+                appendTo: document.body,
+            });
+            endDateInput.value = flatpickr.formatDate(defaultEnd, 'j M Y');
+
+            const picker = PoseidonAccountPicker.mountAccountPicker(
+                document.getElementById('oolAccountPicker'),
+                () => { generateBtn.disabled = false; }
+            );
+
+            generateBtn.addEventListener('click', async () => {
+                const account = picker.getSelected();
+                if (!account) return;
+                const sub = picker.getSubAccount();
+                const ccy = ccySelect.value;
+                const rawAmount = amountInput.value.trim();
+                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { alert('Please enter a valid amount.'); return; }
+
+                const startStr = startDateInput.value.trim();
+                const endStr = endDateInput.value.trim();
+                if (!endStr) { alert('Please select an end date.'); return; }
+                const startD = new Date(startStr), endD = new Date(endStr);
+                if (endD <= startD) { alert('End date must be after start date.'); return; }
+
+                const cp = await PoseidonCounterparty.getCounterparty(account);
+                const tpl = PoseidonTemplates.oneOffLoan({
+                    salutation: PoseidonCounterparty.counterpartySalutation(cp),
+                    copy: account.copy || account.accountNo,
+                    sub,
+                    acName: account.acName,
+                    ccy,
+                    amount: rawAmount,
+                    purpose: purposeInput.value.trim() || 'to cover OD',
+                    endDate: endStr,
+                    startLabel: PoseidonCommon.startDateLabel(startD),
+                });
+                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
+            });
+        })();
+
+        // ===== SI Loan tab =====
+        (function initSiLoan() {
+            const ccySelect = document.getElementById('siCcy');
+            const amountInput = document.getElementById('siAmount');
+            const startDateInput = document.getElementById('siStartDate');
+            const rollingSelect = document.getElementById('siRolling');
+            const loanInstrInput = document.getElementById('siLoanInstruction');
+            const purposeInput = document.getElementById('siPurpose');
+            const generateBtn = document.getElementById('siGenerate');
+
+            fillCurrencySelect(ccySelect);
+            attachAmountFormatter(amountInput);
+
+            const today = new Date();
+            flatpickr(startDateInput, { defaultDate: today, dateFormat: 'j F Y' });
+            startDateInput.value = flatpickr.formatDate(today, 'j F Y');
+
+            const picker = PoseidonAccountPicker.mountAccountPicker(
+                document.getElementById('siAccountPicker'),
+                (account) => {
+                    generateBtn.disabled = false;
+                    // auto-fill loan instruction from the selected account
+                    loanInstrInput.value = account.loanInstruction || '';
+                }
+            );
+
+            function buildAndSend() {
+                const account = picker.getSelected();
+                if (!account) return;
+                const sub = picker.getSubAccount();
+                const ccy = ccySelect.value;
+                const rawAmount = amountInput.value.trim();
+                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { alert('Please enter a valid amount.'); return; }
+
+                PoseidonCounterparty.getCounterparty(account).then(cp => {
+                    const tpl = PoseidonTemplates.siLoan({
+                        salutation: PoseidonCounterparty.counterpartySalutation(cp),
+                        copy: account.copy || account.accountNo,
+                        sub,
+                        acName: account.acName,
+                        ccy,
+                        amount: rawAmount,
+                        rolling: rollingSelect.value,
+                        loanInstruction: loanInstrInput.value.trim(),
+                        purpose: purposeInput.value.trim() || 'to cover OD',
+                        startDate: startDateInput.value.trim(),
+                    });
+                    PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
+                });
+            }
+
+            generateBtn.addEventListener('click', () => {
+                if (!loanInstrInput.value.trim()) {
+                    PoseidonCommon.showWarningModal({
+                        title: 'Loan Instruction is empty',
+                        body: 'This account has no Loan Instruction on file (and you haven\'t typed one). The email body will be missing that piece. Continue anyway?',
                         onContinue: buildAndSend,
                     });
                 } else {

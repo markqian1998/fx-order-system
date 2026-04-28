@@ -18,6 +18,29 @@ function formatDateForSubject(date) {
     return `${year}${month}${day}`;
 }
 
+// "8 Apr 2026" — used in loan body "til {date}"
+function formatDateShort(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    return flatpickr.formatDate(d, 'j M Y');
+}
+
+// "26 March 2026" — used in SI loan body "starting from today {date}"
+function formatDateLong(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    return flatpickr.formatDate(d, 'j F Y');
+}
+
+// "today" / "tomorrow" / "8 May 2026" — used in loan bodies for "starting from {label}"
+function startDateLabel(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const target = new Date(d); target.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((target - today) / 86400000);
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'tomorrow';
+    return formatDateShort(d);
+}
+
 function openMailto(to, cc, subject, body) {
     const toStr = Array.isArray(to) ? to.map(r => r.email || r).join(',') : (to || '');
     const ccStr = Array.isArray(cc) ? cc.map(r => r.email || r).join(',') : (cc || '');
@@ -63,4 +86,4 @@ function showWarningModal({ title, body, continueLabel = 'Continue anyway', canc
     modal.show();
 }
 
-window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, openMailto, showWarningModal };
+window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, openMailto, showWarningModal };
