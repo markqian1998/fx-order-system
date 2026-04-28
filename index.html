@@ -85,12 +85,12 @@
         <!-- Call Deposit tab -->
         <div class="tab-pane fade" id="tab-cd" role="tabpanel">
             <div class="mb-3">
-                <label class="form-label">Action</label>
-                <div>
-                    <input type="radio" name="cdAction" value="place" id="cdActionPlace" checked>
-                    <label for="cdActionPlace" class="me-3">Place</label>
-                    <input type="radio" name="cdAction" value="unwind" id="cdActionUnwind">
-                    <label for="cdActionUnwind">Unwind</label>
+                <label class="form-label d-block">Action</label>
+                <div class="btn-group btn-group-lg" role="group" aria-label="Call Deposit action">
+                    <input type="radio" class="btn-check" name="cdAction" id="cdActionPlace" value="place" checked>
+                    <label class="btn btn-outline-primary" for="cdActionPlace" style="min-width: 8rem;">Place</label>
+                    <input type="radio" class="btn-check" name="cdAction" id="cdActionUnwind" value="unwind">
+                    <label class="btn btn-outline-primary" for="cdActionUnwind" style="min-width: 8rem;">Unwind</label>
                 </div>
             </div>
 
@@ -111,7 +111,7 @@
                 </div>
             </div>
 
-            <button id="cdGenerate" class="btn btn-primary" disabled>Generate Email</button>
+            <button id="cdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
         </div>
 
         <!-- Phase 2 stubs -->
@@ -127,7 +127,7 @@
 
     <!-- Renderer modules -->
     <script src="renderer/common.js"></script>
-    <script src="renderer/banker.js"></script>
+    <script src="renderer/counterparty.js"></script>
     <script src="renderer/account-picker.js"></script>
     <script src="renderer/templates.js"></script>
 
@@ -374,7 +374,7 @@
 
         // ===== Call Deposit tab =====
         (function initCallDeposit() {
-            const ALL_CCY = ['USD','HKD','CNH','EUR','GBP','AUD','CHF','JPY'];
+            const ALL_CCY = ['USD','EUR','JPY','GBP','CAD','AUD','NZD','CHF','HKD','CNH','KRW','TWD','SGD'];
             const PRECHECK_THRESHOLD_USD = 50000;
 
             const ccySelect = document.getElementById('cdCcy');
@@ -407,13 +407,13 @@
                 }
 
                 const action = document.querySelector('input[name="cdAction"]:checked').value;
-                const banker = await PoseidonBanker.getBanker(account.custodian);
-                const salutation = PoseidonBanker.bankerSalutation(banker);
+                const cp = await PoseidonCounterparty.getCounterparty(account);
+                const salutation = PoseidonCounterparty.counterpartySalutation(cp);
 
                 const ctx = {
                     salutation,
                     book: account.book,
-                    copy: account.copy,
+                    copy: account.copy || account.accountNo,
                     sub,
                     acName: account.acName,
                     ccy,
@@ -425,12 +425,12 @@
                     : PoseidonTemplates.callDepositUnwind(ctx);
 
                 const cc = [
-                    ...(banker.ccBackup || []),
+                    ...(cp.ccBackup || []),
                     'fa@ppgfo.com',
                     ...(account.pcEmail ? [account.pcEmail] : []),
                 ];
 
-                PoseidonCommon.openMailto(banker.to, cc, tpl.subject, tpl.body);
+                PoseidonCommon.openMailto(cp.to, cc, tpl.subject, tpl.body);
             }
 
             generateBtn.addEventListener('click', () => {

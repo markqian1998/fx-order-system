@@ -1,8 +1,8 @@
 function mountAccountPicker(rootEl, onSelect) {
     rootEl.innerHTML = `
         <div class="mb-3 position-relative">
-            <label class="form-label">Account (type short number, e.g. 130381)</label>
-            <input type="text" class="form-control account-search" autocomplete="off" placeholder="Search by short account number or name">
+            <label class="form-label">Account <span class="text-muted small">(type account number <em>or</em> name — both work)</span></label>
+            <input type="text" class="form-control account-search" autocomplete="off" placeholder="e.g. 130381  /  Next Merchant">
             <div class="list-group account-results position-absolute w-100" style="z-index:10; max-height:240px; overflow-y:auto; display:none;"></div>
         </div>
         <div class="mb-3">

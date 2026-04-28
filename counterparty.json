@@ -1,0 +1,93 @@
+{
+  "_comment": "Counterparty (banker) routing. `recipients` defines the email lists per desk. `byKey` maps Account.Custodian-Book to a desk; `byAccount` overrides the key lookup for specific account numbers (e.g. Nomura SG accounts split between Stan and Cheery). The renderer auto-adds fa@ppgfo.com and the account's PC email — do NOT duplicate those here.",
+  "recipients": {
+    "ubs-hksg": {
+      "to":       [{ "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" }],
+      "ccBackup": [{ "name": "Yuen, Ryan",  "email": "ryan.yuen@ubs.com" }]
+    },
+    "ubs-ch": {
+      "to": [
+        { "name": "Jessica Hendrix", "email": "jessica.hendrix@ubs.com" },
+        { "name": "Lilian Wong",      "email": "lilian-za.wong@ubs.com" }]
+    },
+    "uobkh-hksg": {
+      "to": [
+        { "name": "Stephanie Leung", "email": "stephanie.leung@uobkayhian.com.hk" },
+        { "name": "Elly Hui",        "email": "elly.hui@uobkayhian.com.hk" }
+      ],
+      "ccBackup": [
+        { "name": "GRP_HK_PWM_HUGOTSENG_SA_GROUP", "email": "hugotseng.sa@uobkayhian.com.hk" },
+        { "name": "Hugo Tseng",                    "email": "hugo.tseng@uobkayhian.com.hk" }
+      ]
+    },
+    "nomura-stan": {
+      "to": [
+        { "name": "Karen Leung", "email": "karen.leung2@nomura.com" }
+      ],
+      "ccBackup": [
+        { "name": "Priscilla Lam", "email": "priscilla.lam@nomura.com" },
+        { "name": "Stan Lu",       "email": "stan.lu@nomura.com" }
+      ]
+    },
+    "nomura-cheery": {
+      "to": [
+        { "name": "Harry Bao",  "email": "harry.bao@nomura.com" },
+        { "name": "Sirena Au",  "email": "sirena.au@nomura.com" }
+      ],
+      "ccBackup": [
+        { "name": "Cheery Hou", "email": "cheery.hou@nomura.com" }
+      ]
+    },
+    "jb-sg": {
+      "to": [
+        { "name": "JBHK EAM Trades", "email": "eam.hk.trades@juliusbaer.com" }
+      ],
+      "ccBackup": [
+        { "name": "JBHK EAM Admin", "email": "eam.hk.admin@juliusbaer.com" },
+        { "name": "Ricky Cheung",   "email": "ricky.cheung@juliusbaer.com" },
+        { "name": "Kain Chan",      "email": "kain.chan@juliusbaer.com" }
+      ]
+    },
+    "lgt-hk": {
+      "to":       [{ "name": "Ada Lo",   "email": "ada.lo@lgt.com" }],
+      "ccBackup": [{ "name": "David Pun", "email": "david.pun@lgt.com" }]
+    },
+    "lgt-sg": {
+      "to": [{ "name": "Virginia Lo", "email": "virginia.lo@lgt.com" }],
+      "ccBackup": [
+        { "name": "Melanie Tam",  "email": "melanie.tam@lgt.com" },
+        { "name": "Peggy Cheung", "email": "peggy.cheung@lgt.com" }
+      ]
+    },
+    "cai-sg": {
+      "to":       [{ "name": "Roseline Lau", "email": "roseline.lau@ca-indosuez.sg" }],
+      "ccBackup": [{ "name": "Wei Keong Ho", "email": "weikeong.ho@ca-indosuez.sg" }]
+    },
+    "bos-sg": {
+      "to": [
+        { "name": "Peggy Li", "email": "Peggy.Li@Bankofsingapore.com" },
+        { "name": "Tanya",    "email": "Tanya@bankofsingapore.com" }
+      ],
+      "ccBackup": []
+    }
+  },
+  "byKey": {
+    "UBS-HK":    "ubs-hksg",
+    "UBS-SG":    "ubs-hksg",
+    "UBS-CH":    "ubs-ch",
+    "UOBKH-HK":  "uobkh-hksg",
+    "UOBKH-SG":  "uobkh-hksg",
+    "Nomura-SG": "nomura-cheery",
+    "JB-SG":     "jb-sg",
+    "LGT-HK":    "lgt-hk",
+    "LGT-SG":    "lgt-sg",
+    "CAI-SG":    "cai-sg",
+    "BOS-SG":    "bos-sg"
+  },
+  "byAccount": {
+    "_comment": "Per-account overrides. Use Account No (no dashes if Airtable stores it that way). Nomura SG accounts default to Cheery (13/16); these 3 go to Stan instead.",
+    "22607898": "nomura-stan",
+    "22958822": "nomura-stan",
+    "22266669": "nomura-stan"
+  }
+}

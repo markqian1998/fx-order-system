@@ -9,7 +9,7 @@ let httpServer = null;
 const ACCOUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 let cachedAccounts = null;
 let cacheLoadedAt = 0;
-let cachedBankers = null;
+let cachedCounterparties = null;
 
 const FIELDS = {
     accountNo: 'Account No',
@@ -106,20 +106,39 @@ function searchAccounts(accounts, q) {
     return scored.slice(0, 10).map(s => s.a);
 }
 
-function loadBankers() {
-    if (cachedBankers) return cachedBankers;
+function loadCounterparties() {
+    if (cachedCounterparties) return cachedCounterparties;
     const candidates = [
-        path.join(__dirname, 'bankers.json'),
-        path.join(process.resourcesPath || __dirname, 'bankers.json'),
+        path.join(__dirname, 'counterparty.json'),
+        path.join(process.resourcesPath || __dirname, 'counterparty.json'),
     ];
     for (const p of candidates) {
         if (fs.existsSync(p)) {
-            cachedBankers = JSON.parse(fs.readFileSync(p, 'utf8'));
-            return cachedBankers;
+            cachedCounterparties = JSON.parse(fs.readFileSync(p, 'utf8'));
+            return cachedCounterparties;
         }
     }
-    cachedBankers = {};
-    return cachedBankers;
+    cachedCounterparties = { recipients: {}, byKey: {}, byAccount: {} };
+    return cachedCounterparties;
+}
+
+function resolveCounterparty({ accountNo, custodian, book }) {
+    const cfg = loadCounterparties();
+    const recipients = cfg.recipients || {};
+    const byKey = cfg.byKey || {};
+    const byAccount = cfg.byAccount || {};
+
+    const acnoBare = String(accountNo || '').replace(/-/g, '');
+    let recipientName = byAccount[accountNo] || byAccount[acnoBare];
+
+    if (!recipientName) {
+        const key = `${custodian || ''}-${book || ''}`;
+        recipientName = byKey[key];
+    }
+
+    if (!recipientName) return { to: [], ccBackup: [], resolvedAs: null };
+    const r = recipients[recipientName] || { to: [], ccBackup: [] };
+    return { to: r.to || [], ccBackup: r.ccBackup || [], resolvedAs: recipientName };
 }
 
 function createServer() {
@@ -186,10 +205,9 @@ function createServer() {
         }
     });
 
-    app.get('/api/bankers/:custodian', (req, res) => {
-        const all = loadBankers();
-        const entry = all[req.params.custodian] || { to: [], ccBackup: [] };
-        res.json(entry);
+    app.get('/api/counterparty', (req, res) => {
+        const { accountNo, custodian, book } = req.query;
+        res.json(resolveCounterparty({ accountNo, custodian, book }));
     });
 
     httpServer = app.listen(3000);

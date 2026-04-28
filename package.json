@@ -30,7 +30,7 @@
     "extraResources": [
       "assets/**",
       "renderer/**",
-      "bankers.json"
+      "counterparty.json"
     ]
   },
   "dependencies": {
