@@ -10,6 +10,24 @@ function parseNotional(value) {
     return Number(String(value).replace(/,/g, ''));
 }
 
+// 0-decimal currencies (no fractional units in market convention).
+const CCY_DECIMALS = { JPY: 0, KRW: 0, TWD: 0, HKD: 0 };
+function decimalsFor(ccy) { return ccy in CCY_DECIMALS ? CCY_DECIMALS[ccy] : 2; }
+
+// Round a notional string to the currency's allowed precision.
+// Returns { rounded: string, changed: bool }. Empty/invalid input → no change.
+function roundAmountForCcy(amountStr, ccy) {
+    const trimmed = String(amountStr || '').trim();
+    if (!trimmed) return { rounded: trimmed, changed: false };
+    const n = parseNotional(trimmed);
+    if (!isFinite(n)) return { rounded: trimmed, changed: false };
+    const dec = decimalsFor(ccy);
+    const factor = Math.pow(10, dec);
+    const r = Math.round(n * factor) / factor;
+    const formatted = r.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return { rounded: formatted, changed: r !== n };
+}
+
 function formatDateForSubject(date) {
     const d = date || new Date();
     const year = d.getFullYear();
@@ -47,15 +65,60 @@ function valueDateLabel(date) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function _escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// Convert plain-text body to Calibri 12 HTML, bolding any line that starts with "For a/c ",
+// and appending 3 blank lines so the recipient's Outlook signature doesn't snug against the body.
+function _bodyToCalibriHtml(plainBody) {
+    const lines = plainBody.split('\n');
+    const htmlLines = lines.map(line => {
+        const esc = _escapeHtml(line);
+        const styled = /^For a\/c /.test(line) ? `<strong>${esc}</strong>` : esc;
+        return `<div>${styled || '<br>'}</div>`;
+    });
+    // 3 trailing blank lines between body and signature
+    htmlLines.push('<div><br></div>', '<div><br></div>', '<div><br></div>');
+    return `<div style="font-family: Calibri, sans-serif; font-size: 12pt;">${htmlLines.join('')}</div>`;
+}
+
 function openMailto(to, cc, subject, body) {
-    const toStr = Array.isArray(to) ? to.map(r => r.email || r).join(',') : (to || '');
-    const ccStr = Array.isArray(cc) ? cc.map(r => r.email || r).join(',') : (cc || '');
-    const url = `mailto:${encodeURIComponent(toStr)}?cc=${encodeURIComponent(ccStr)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    if (typeof require !== 'undefined') {
-        const { shell } = require('electron');
-        shell.openExternal(url);
-    } else {
-        window.location.href = url;
+    try {
+        // Plain body for the mailto: URL — append 4 newlines = 3 blank visible lines for signature spacing.
+        const plainBody = body + '\n\n\n\n';
+        // Rich HTML version on clipboard, so user can ⌘V to apply Calibri 12 + bold.
+        const htmlBody = _bodyToCalibriHtml(body);
+
+        if (typeof require !== 'undefined') {
+            try {
+                const { clipboard } = require('electron');
+                clipboard.write({ text: plainBody, html: htmlBody });
+            } catch (e) {
+                console.warn('Clipboard write failed (non-fatal):', e);
+            }
+        }
+
+        const toStr = Array.isArray(to) ? to.map(r => r.email || r).join(',') : (to || '');
+        const ccStr = Array.isArray(cc) ? cc.map(r => r.email || r).join(',') : (cc || '');
+        const url = `mailto:${encodeURIComponent(toStr)}?cc=${encodeURIComponent(ccStr)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainBody)}`;
+        console.log('[openMailto] opening URL (length:', url.length, '):', url.substring(0, 150) + '...');
+
+        if (typeof require !== 'undefined') {
+            const { shell } = require('electron');
+            shell.openExternal(url).catch(err => {
+                console.error('[openMailto] shell.openExternal failed:', err);
+                showToast(`Failed to open email client: ${err.message}`, 'danger');
+            });
+        } else {
+            window.location.href = url;
+        }
+    } catch (e) {
+        console.error('[openMailto] error:', e);
+        showToast(`openMailto error: ${e.message}`, 'danger');
     }
 }
 
@@ -130,4 +193,4 @@ function myEmail() { return _myEmail; }
 // before the user can fill out a form.
 loadMyEmail();
 
-window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, valueDateLabel, openMailto, showWarningModal, showToast, custodianColor, loadMyEmail, myEmail };
+window.PoseidonCommon = { formatNotional, parseNotional, decimalsFor, roundAmountForCcy, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, valueDateLabel, openMailto, showWarningModal, showToast, custodianColor, loadMyEmail, myEmail };

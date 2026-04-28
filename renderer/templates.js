@@ -46,6 +46,7 @@ function ftdDeposit(ctx) {
         `Amount: ${ctx.ccy} ${ctx.amount}`,
     ];
     if (ctx.rate) lines.push(`Rate to client: ${ctx.rate}%`);
+    if (ctx.spread) lines.push(`Spread: ${ctx.spread} bps`);
     lines.push(`Value ${ctx.valueLabel || 'Today'}`);
     lines.push('');
     lines.push('Many thanks.');

@@ -23,4 +23,6 @@ function counterpartySalutation(cp) {
     return m ? m[1] : first.name.split(/\s+/)[0];
 }
 
-window.PoseidonCounterparty = { getCounterparty, counterpartySalutation };
+function _clearCache() { _cpCache.clear(); }
+
+window.PoseidonCounterparty = { getCounterparty, counterpartySalutation, _clearCache };

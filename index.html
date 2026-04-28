@@ -28,23 +28,26 @@
 <body class="container mt-4">
     <h1 class="mb-4">Poseidon Operations System</h1>
 
-    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-fx" type="button">💱 FX Order</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cd" type="button">💰 Call Deposit</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ftd" type="button">💰 FTD Deposit</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ool" type="button">🏦 One-off Loan</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-si" type="button">🏦 SI Loan</button>
-        </li>
-    </ul>
+    <div class="d-flex align-items-center mb-2">
+        <ul class="nav nav-tabs flex-grow-1" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-fx" type="button">💱 FX Order</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cd" type="button">💰 Call Deposit</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ftd" type="button">💰 FTD Deposit</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ool" type="button">🏦 One-off Loan</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-si" type="button">🏦 SI Loan</button>
+            </li>
+        </ul>
+        <button id="refreshAccountsBtn" class="btn btn-sm btn-outline-secondary ms-2" title="Refresh accounts from Airtable">🔄 Refresh</button>
+    </div>
 
     <div class="tab-content">
         <!-- FX Order tab -->
@@ -91,6 +94,7 @@
             </div>
 
             <button id="cdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
         </div>
 
         <!-- FTD Deposit tab -->
@@ -102,7 +106,7 @@
                     <label for="ftdCcy" class="form-label">Currency</label>
                     <select id="ftdCcy" class="form-select"></select>
                 </div>
-                <div class="mb-3 col-md-3">
+                <div class="mb-3 col-md-4">
                     <label for="ftdAmount" class="form-label">Amount</label>
                     <input type="text" id="ftdAmount" class="form-control" placeholder="e.g., 6,680,810.38">
                 </div>
@@ -110,6 +114,8 @@
                     <label for="ftdTenor" class="form-label">Tenor</label>
                     <select id="ftdTenor" class="form-select"></select>
                 </div>
+            </div>
+            <div class="row">
                 <div class="mb-3 col-md-2">
                     <label for="ftdRate" class="form-label">Rate (opt.)</label>
                     <div class="input-group">
@@ -121,8 +127,16 @@
                     <label for="ftdValueDate" class="form-label">Value</label>
                     <input type="text" id="ftdValueDate" class="form-control" placeholder="Today">
                 </div>
+                <div class="mb-3 col-md-2" id="ftdSpreadCol" style="display:none;">
+                    <label for="ftdSpread" class="form-label">Spread</label>
+                    <div class="input-group">
+                        <input type="text" id="ftdSpread" class="form-control" value="25" inputmode="decimal">
+                        <span class="input-group-text">bps</span>
+                    </div>
+                </div>
             </div>
             <button id="ftdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
         </div>
 
         <!-- One-off Loan tab -->
@@ -155,6 +169,7 @@
                 </div>
             </details>
             <button id="oolGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
         </div>
 
         <!-- SI Loan tab -->
@@ -194,6 +209,7 @@
                 </div>
             </details>
             <button id="siGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
         </div>
     </div>
 
@@ -217,25 +233,10 @@
     <script src="renderer/counterparty.js"></script>
     <script src="renderer/account-picker.js"></script>
     <script src="renderer/templates.js"></script>
+    <script src="renderer/tab-factory.js"></script>
 
     <!-- App logic -->
     <script>
-        // ===== Routing display helper for non-FX tabs =====
-        async function updateDepositRouting(elId, account) {
-            const el = document.getElementById(elId);
-            if (!el) return;
-            if (!account) { el.style.display = 'none'; return; }
-            const cp = await PoseidonCounterparty.getCounterparty(account, 'deposit');
-            el.style.display = 'block';
-            if (!cp || !cp.resolvedAs || !cp.to || cp.to.length === 0) {
-                el.className = 'alert alert-warning mb-3';
-                el.textContent = `No counterparty configured for ${account.custodian || '?'}/${account.book || '?'} — submit may fail.`;
-                return;
-            }
-            el.className = 'alert alert-info mb-3';
-            el.innerHTML = `Routing to: <strong>${cp.resolvedAs}</strong> &middot; To: ${cp.to.map(r => r.email).join(', ')}`;
-        }
-
         // ===== FX Order tab =====
         let fxPicker = null;
 
@@ -402,10 +403,10 @@
             const defaultDate = new Date(new Date().setDate(new Date().getDate() + 14));
             flatpickr(goodTill, {
                 defaultDate,
-                dateFormat: 'd M Y',
+                dateFormat: 'j M Y',
                 onChange: (_dates, dateStr, instance) => { instance.input.value = dateStr + ' NY 5pm'; },
             });
-            goodTill.value = flatpickr.formatDate(defaultDate, 'd M Y') + ' NY 5pm';
+            goodTill.value = flatpickr.formatDate(defaultDate, 'j M Y') + ' NY 5pm';
 
             // Toggle Market vs Limit
             document.querySelectorAll(`input[name="orderType${i}"]`).forEach(radio => {
@@ -577,97 +578,10 @@
 
             const subject = `FX Orders - ${formatDateForSubject()}`;
             PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), subject, emailBody);
-            PoseidonCommon.showToast('Email opened in your default mail client.', 'success');
+            PoseidonCommon.showToast('Email opened. Paste (⌘V / Ctrl+V) in the body for Calibri 12 + bold formatting.', 'success');
         });
 
-        // ===== Call Deposit tab =====
-        (function initCallDeposit() {
-            const ALL_CCY = ['USD','EUR','JPY','GBP','CAD','AUD','NZD','CHF','HKD','CNH','KRW','TWD','SGD'];
-            const PRECHECK_THRESHOLD_USD = 50000;
-
-            const ccySelect = document.getElementById('cdCcy');
-            ALL_CCY.forEach(c => ccySelect.add(new Option(c, c)));
-            ccySelect.value = 'USD';
-
-            const amountInput = document.getElementById('cdAmount');
-            amountInput.addEventListener('input', () => { amountInput.value = PoseidonCommon.formatNotional(amountInput.value); });
-
-            const valueDateInput = document.getElementById('cdValueDate');
-            const today = new Date();
-            flatpickr(valueDateInput, { defaultDate: today, dateFormat: 'd M Y' });
-            valueDateInput.value = flatpickr.formatDate(today, 'd M Y');
-
-            const generateBtn = document.getElementById('cdGenerate');
-            const picker = PoseidonAccountPicker.mountAccountPicker(
-                document.getElementById('cdAccountPicker'),
-                (account) => {
-                    generateBtn.disabled = false;
-                    updateDepositRouting('cdRoutingDisplay', account);
-                }
-            );
-
-            async function buildAndSend() {
-                const account = picker.getSelected();
-                if (!account) return;
-                const sub = picker.getSubAccount();
-                const ccy = ccySelect.value;
-                const rawAmount = amountInput.value.trim();
-                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) {
-                    PoseidonCommon.showToast('Please enter a valid amount.', 'danger');
-                    return;
-                }
-
-                const action = document.querySelector('input[name="cdAction"]:checked').value;
-                const cp = await PoseidonCounterparty.getCounterparty(account);
-                const salutation = PoseidonCounterparty.counterpartySalutation(cp);
-
-                const valueD = new Date(valueDateInput.value.trim());
-                const ctx = {
-                    salutation,
-                    book: account.book,
-                    copy: account.copy || account.accountNo,
-                    sub,
-                    acName: account.acName,
-                    ccy,
-                    amount: rawAmount,
-                    valueLabel: PoseidonCommon.valueDateLabel(valueD),
-                };
-
-                const tpl = action === 'place'
-                    ? PoseidonTemplates.callDepositPlace(ctx)
-                    : PoseidonTemplates.callDepositUnwind(ctx);
-
-                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
-                PoseidonCommon.showToast('Email opened in your default mail client.', 'success');
-            }
-
-            generateBtn.addEventListener('click', () => {
-                const action = document.querySelector('input[name="cdAction"]:checked').value;
-                const amountUsd = ccySelect.value === 'USD' ? PoseidonCommon.parseNotional(amountInput.value) : Infinity;
-                if (action === 'place' && amountUsd < PRECHECK_THRESHOLD_USD) {
-                    PoseidonCommon.showWarningModal({
-                        title: 'Amount below 50,000 USD',
-                        body: `Call Deposit Place is typically reserved for amounts ≥ USD 50,000. Current amount: USD ${amountInput.value}. Continue anyway?`,
-                        onContinue: buildAndSend,
-                    });
-                } else {
-                    buildAndSend();
-                }
-            });
-        })();
-
-        // ===== Shared helpers for the loan / FTD tabs =====
-        const ALL_CCY_LIST = ['USD','EUR','JPY','GBP','CAD','AUD','NZD','CHF','HKD','CNH','KRW','TWD','SGD'];
-
-        function fillCurrencySelect(select, defaultCcy = 'USD') {
-            ALL_CCY_LIST.forEach(c => select.add(new Option(c, c)));
-            select.value = defaultCcy;
-        }
-
-        function attachAmountFormatter(input) {
-            input.addEventListener('input', () => { input.value = PoseidonCommon.formatNotional(input.value); });
-        }
-
+        // ===== buildCcList: still needed by FX Order tab =====
         function buildCcList(cp, account) {
             const me = PoseidonCommon.myEmail();
             return [
@@ -678,15 +592,52 @@
             ];
         }
 
-        // ===== FTD Deposit tab =====
-        (function initFtdDeposit() {
-            const ccySelect = document.getElementById('ftdCcy');
-            const amountInput = document.getElementById('ftdAmount');
-            const tenorSelect = document.getElementById('ftdTenor');
-            const rateInput = document.getElementById('ftdRate');
-            const valueDateInput = document.getElementById('ftdValueDate');
-            const generateBtn = document.getElementById('ftdGenerate');
+        // ===== Call Deposit (factory) =====
+        PoseidonTabFactory.mountDepositLoanTab({
+            tabId: 'cd',
+            mode: 'deposit',
+            currencyDefault: 'USD',
+            dates: { value: { elId: 'cdValueDate', dayOffset: 0 } },
+            validate: (refs) => {
+                if (!refs.getAmountStr() || refs.getAmount() <= 0) return 'Please enter a valid amount.';
+                return null;
+            },
+            preCheck: (refs, send) => {
+                const action = document.querySelector('input[name="cdAction"]:checked').value;
+                const isUSD = refs.getCcy() === 'USD';
+                const amount = isUSD ? refs.getAmount() : Infinity;
+                if (action === 'place' && amount < 50000) {
+                    PoseidonCommon.showWarningModal({
+                        title: 'Amount below 50,000 USD',
+                        body: `Call Deposit Place is typically reserved for amounts ≥ USD 50,000. Current amount: USD ${refs.amountInput.value}. Continue anyway?`,
+                        onContinue: send,
+                    });
+                    return false; // modal handles send
+                }
+                return true;
+            },
+            buildCtx: ({ account, salutation, refs }) => {
+                const valueD = new Date(refs.dates.value.value.trim());
+                return {
+                    salutation,
+                    book: account.book,
+                    copy: account.copy || account.accountNo,
+                    sub: refs.getSub(),
+                    acName: account.acName,
+                    ccy: refs.getCcy(),
+                    amount: refs.getAmountStr(),
+                    valueLabel: PoseidonCommon.valueDateLabel(valueD),
+                };
+            },
+            template: () => {
+                const action = document.querySelector('input[name="cdAction"]:checked').value;
+                return action === 'place' ? PoseidonTemplates.callDepositPlace : PoseidonTemplates.callDepositUnwind;
+            },
+        });
 
+        // ===== FTD Deposit (factory) =====
+        (() => {
+            const tenorSelect = document.getElementById('ftdTenor');
             const TENORS = [
                 '1 week', '2 week',
                 '1 month', '2 month', '3 month', '4 month', '5 month', '6 month',
@@ -695,174 +646,118 @@
             ];
             TENORS.forEach(t => tenorSelect.add(new Option(t, t)));
             tenorSelect.value = '1 month';
-
-            fillCurrencySelect(ccySelect);
-            attachAmountFormatter(amountInput);
-
-            const today = new Date();
-            flatpickr(valueDateInput, { defaultDate: today, dateFormat: 'd M Y' });
-            valueDateInput.value = flatpickr.formatDate(today, 'd M Y');
-
-            const picker = PoseidonAccountPicker.mountAccountPicker(
-                document.getElementById('ftdAccountPicker'),
-                (account) => {
-                    generateBtn.disabled = false;
-                    updateDepositRouting('ftdRoutingDisplay', account);
-                }
-            );
-
-            generateBtn.addEventListener('click', async () => {
-                const account = picker.getSelected();
-                if (!account) return;
-                const sub = picker.getSubAccount();
-                const ccy = ccySelect.value;
-                const rawAmount = amountInput.value.trim();
-                const tenor = tenorSelect.value;
-                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { PoseidonCommon.showToast('Please enter a valid amount.', 'danger'); return; }
-                if (!tenor) { PoseidonCommon.showToast('Please pick a tenor.', 'danger'); return; }
-
-                const cp = await PoseidonCounterparty.getCounterparty(account);
-                // UBS CH accounts are booked at UBS Jersey
+        })();
+        PoseidonTabFactory.mountDepositLoanTab({
+            tabId: 'ftd',
+            mode: 'deposit',
+            currencyDefault: 'USD',
+            dates: { value: { elId: 'ftdValueDate', dayOffset: 0 } },
+            onAccountSelected: (account) => {
+                const isUbsHkSg = account.custodian === 'UBS' && (account.book === 'HK' || account.book === 'SG');
+                document.getElementById('ftdSpreadCol').style.display = isUbsHkSg ? '' : 'none';
+            },
+            onClear: () => {
+                document.getElementById('ftdSpread').value = '25';
+                document.getElementById('ftdSpreadCol').style.display = 'none';
+            },
+            validate: (refs) => {
+                if (!refs.getAmountStr() || refs.getAmount() <= 0) return 'Please enter a valid amount.';
+                if (!document.getElementById('ftdTenor').value) return 'Please pick a tenor.';
+                return null;
+            },
+            buildCtx: ({ account, salutation, refs }) => {
+                const valueD = new Date(refs.dates.value.value.trim());
                 const bookingEntity = (account.custodian === 'UBS' && account.book === 'CH') ? 'UBS Jersey' : '';
-                const valueD = new Date(valueDateInput.value.trim());
-                const tpl = PoseidonTemplates.ftdDeposit({
-                    salutation: PoseidonCounterparty.counterpartySalutation(cp),
+                const isUbsHkSg = account.custodian === 'UBS' && (account.book === 'HK' || account.book === 'SG');
+                const spread = isUbsHkSg ? document.getElementById('ftdSpread').value.trim() : '';
+                return {
+                    salutation,
                     book: account.book,
                     copy: account.copy || account.accountNo,
-                    sub,
+                    sub: refs.getSub(),
                     acName: account.acName,
-                    ccy,
-                    amount: rawAmount,
-                    tenor,
-                    rate: rateInput.value.trim(),
+                    ccy: refs.getCcy(),
+                    amount: refs.getAmountStr(),
+                    tenor: document.getElementById('ftdTenor').value,
+                    rate: document.getElementById('ftdRate').value.trim(),
+                    spread,
                     bookingEntity,
                     valueLabel: PoseidonCommon.valueDateLabel(valueD),
-                });
-                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
-                PoseidonCommon.showToast('Email opened in your default mail client.', 'success');
-            });
-        })();
+                };
+            },
+            template: 'ftdDeposit',
+        });
 
-        // ===== One-off Loan tab =====
-        (function initOneOffLoan() {
-            const ccySelect = document.getElementById('oolCcy');
-            const amountInput = document.getElementById('oolAmount');
-            const startDateInput = document.getElementById('oolStartDate');
-            const endDateInput = document.getElementById('oolEndDate');
-            const purposeInput = document.getElementById('oolPurpose');
-            const generateBtn = document.getElementById('oolGenerate');
-
-            fillCurrencySelect(ccySelect);
-            attachAmountFormatter(amountInput);
-
-            const today = new Date();
-            flatpickr(startDateInput, { defaultDate: today, dateFormat: 'j M Y' });
-            startDateInput.value = flatpickr.formatDate(today, 'j M Y');
-
-            const defaultEnd = new Date(today.getTime() + 7 * 86400000);
-            flatpickr(endDateInput, {
-                defaultDate: defaultEnd,
-                dateFormat: 'j M Y',
-                position: 'auto right',
-                appendTo: document.body,
-            });
-            endDateInput.value = flatpickr.formatDate(defaultEnd, 'j M Y');
-
-            const picker = PoseidonAccountPicker.mountAccountPicker(
-                document.getElementById('oolAccountPicker'),
-                (account) => {
-                    generateBtn.disabled = false;
-                    updateDepositRouting('oolRoutingDisplay', account);
-                }
-            );
-
-            generateBtn.addEventListener('click', async () => {
-                const account = picker.getSelected();
-                if (!account) return;
-                const sub = picker.getSubAccount();
-                const ccy = ccySelect.value;
-                const rawAmount = amountInput.value.trim();
-                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { PoseidonCommon.showToast('Please enter a valid amount.', 'danger'); return; }
-
-                const startStr = startDateInput.value.trim();
-                const endStr = endDateInput.value.trim();
-                if (!endStr) { PoseidonCommon.showToast('Please select an end date.', 'danger'); return; }
-                const startD = new Date(startStr), endD = new Date(endStr);
-                if (endD <= startD) { PoseidonCommon.showToast('End date must be after start date.', 'danger'); return; }
-
-                const cp = await PoseidonCounterparty.getCounterparty(account);
-                const tpl = PoseidonTemplates.oneOffLoan({
-                    salutation: PoseidonCounterparty.counterpartySalutation(cp),
+        // ===== One-off Loan (factory) =====
+        PoseidonTabFactory.mountDepositLoanTab({
+            tabId: 'ool',
+            mode: 'deposit',
+            currencyDefault: 'USD',
+            dates: {
+                start: { elId: 'oolStartDate', dayOffset: 0 },
+                end:   { elId: 'oolEndDate',   dayOffset: 7 },
+            },
+            validate: (refs) => {
+                if (!refs.getAmountStr() || refs.getAmount() <= 0) return 'Please enter a valid amount.';
+                const startStr = refs.dates.start.value.trim();
+                const endStr   = refs.dates.end.value.trim();
+                if (!endStr) return 'Please select an end date.';
+                if (new Date(endStr) <= new Date(startStr)) return 'End date must be after start date.';
+                return null;
+            },
+            buildCtx: ({ account, salutation, refs }) => {
+                const startD = new Date(refs.dates.start.value.trim());
+                return {
+                    salutation,
                     copy: account.copy || account.accountNo,
-                    sub,
+                    sub: refs.getSub(),
                     acName: account.acName,
-                    ccy,
-                    amount: rawAmount,
-                    purpose: purposeInput.value.trim() || 'to cover OD',
-                    endDate: endStr,
+                    ccy: refs.getCcy(),
+                    amount: refs.getAmountStr(),
+                    purpose: document.getElementById('oolPurpose').value.trim() || 'to cover OD',
+                    endDate: refs.dates.end.value.trim(),
                     startLabel: PoseidonCommon.startDateLabel(startD),
-                });
-                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
-                PoseidonCommon.showToast('Email opened in your default mail client.', 'success');
-            });
-        })();
+                };
+            },
+            template: 'oneOffLoan',
+        });
 
-        // ===== SI Loan tab =====
-        (function initSiLoan() {
-            const SI_DEFAULT_LOAN_INSTRUCTION = 'P+I+-Balance';
-
-            const ccySelect = document.getElementById('siCcy');
-            const amountInput = document.getElementById('siAmount');
-            const startDateInput = document.getElementById('siStartDate');
-            const rollingSelect = document.getElementById('siRolling');
-            const loanInstrInput = document.getElementById('siLoanInstruction');
-            const purposeInput = document.getElementById('siPurpose');
-            const generateBtn = document.getElementById('siGenerate');
-
-            fillCurrencySelect(ccySelect);
-            attachAmountFormatter(amountInput);
-            loanInstrInput.value = SI_DEFAULT_LOAN_INSTRUCTION;
-
-            const today = new Date();
-            flatpickr(startDateInput, { defaultDate: today, dateFormat: 'j F Y' });
-            startDateInput.value = flatpickr.formatDate(today, 'j F Y');
-
-            const picker = PoseidonAccountPicker.mountAccountPicker(
-                document.getElementById('siAccountPicker'),
-                (account) => {
-                    generateBtn.disabled = false;
-                    // SI Loan body always needs an instruction; prefer account's value, else default
-                    loanInstrInput.value = account.loanInstruction || SI_DEFAULT_LOAN_INSTRUCTION;
-                    updateDepositRouting('siRoutingDisplay', account);
-                }
-            );
-
-            generateBtn.addEventListener('click', async () => {
-                const account = picker.getSelected();
-                if (!account) return;
-                const sub = picker.getSubAccount();
-                const ccy = ccySelect.value;
-                const rawAmount = amountInput.value.trim();
-                if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { PoseidonCommon.showToast('Please enter a valid amount.', 'danger'); return; }
-
-                const cp = await PoseidonCounterparty.getCounterparty(account);
-                const startD = new Date(startDateInput.value.trim());
-                const tpl = PoseidonTemplates.siLoan({
-                    salutation: PoseidonCounterparty.counterpartySalutation(cp),
+        // ===== SI Loan (factory) =====
+        const SI_DEFAULT_LOAN_INSTRUCTION = 'P+I+-Balance';
+        document.getElementById('siLoanInstruction').value = SI_DEFAULT_LOAN_INSTRUCTION;
+        PoseidonTabFactory.mountDepositLoanTab({
+            tabId: 'si',
+            mode: 'deposit',
+            currencyDefault: 'USD',
+            dates: { start: { elId: 'siStartDate', dayOffset: 0 } },
+            onAccountSelected: (account) => {
+                document.getElementById('siLoanInstruction').value = account.loanInstruction || SI_DEFAULT_LOAN_INSTRUCTION;
+            },
+            onClear: () => {
+                document.getElementById('siLoanInstruction').value = SI_DEFAULT_LOAN_INSTRUCTION;
+                document.getElementById('siRolling').value = 'monthly';
+            },
+            validate: (refs) => {
+                if (!refs.getAmountStr() || refs.getAmount() <= 0) return 'Please enter a valid amount.';
+                return null;
+            },
+            buildCtx: ({ account, salutation, refs }) => {
+                const startD = new Date(refs.dates.start.value.trim());
+                return {
+                    salutation,
                     copy: account.copy || account.accountNo,
-                    sub,
+                    sub: refs.getSub(),
                     acName: account.acName,
-                    ccy,
-                    amount: rawAmount,
-                    rolling: rollingSelect.value,
-                    loanInstruction: loanInstrInput.value.trim() || SI_DEFAULT_LOAN_INSTRUCTION,
-                    purpose: purposeInput.value.trim() || 'to cover OD',
+                    ccy: refs.getCcy(),
+                    amount: refs.getAmountStr(),
+                    rolling: document.getElementById('siRolling').value,
+                    loanInstruction: document.getElementById('siLoanInstruction').value.trim() || SI_DEFAULT_LOAN_INSTRUCTION,
+                    purpose: document.getElementById('siPurpose').value.trim() || 'to cover OD',
                     startLabel: PoseidonCommon.startDateLabel(startD),
-                });
-                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
-                PoseidonCommon.showToast('Email opened in your default mail client.', 'success');
-            });
-        })();
+                };
+            },
+            template: 'siLoan',
+        });
 
         // ===== Auto-focus account search when switching tabs =====
         document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {
@@ -871,6 +766,39 @@
                 const pane = target ? document.querySelector(target) : null;
                 const search = pane && pane.querySelector('.account-search');
                 if (search) search.focus();
+            });
+        });
+
+        // ===== Refresh accounts from Airtable =====
+        document.getElementById('refreshAccountsBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('refreshAccountsBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '🔄 Refreshing...';
+            try {
+                const res = await fetch('/api/accounts/refresh', { method: 'POST' });
+                const j = await res.json();
+                if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+                if (window.PoseidonCounterparty && window.PoseidonCounterparty._clearCache) {
+                    window.PoseidonCounterparty._clearCache();
+                }
+                PoseidonCommon.showToast(`Refreshed ${j.count} accounts.`, 'success');
+            } catch (e) {
+                PoseidonCommon.showToast(`Refresh failed: ${e.message}`, 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        });
+
+        // ===== Clear-all per tab =====
+        document.querySelectorAll('.clear-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pane = btn.closest('.tab-pane');
+                if (!pane) return;
+                const tabId = pane.id.replace(/^tab-/, '');
+                PoseidonTabFactory.clearTab(tabId);
+                PoseidonCommon.showToast('Form cleared.', 'info');
             });
         });
     </script>
