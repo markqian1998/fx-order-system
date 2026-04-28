@@ -20,7 +20,7 @@ function callDepositPlace(ctx) {
     const body =
         `Dear ${ctx.salutation || 'Team'},\n\n` +
         `For a/c ${_accountTagWithBookAndBrackets(ctx)},\n\n` +
-        `Please help place ${ctx.ccy} Call Deposit, amount: ${ctx.ccy} ${ctx.amount}. Value Today.`;
+        `Please help place ${ctx.ccy} Call Deposit, amount: ${ctx.ccy} ${ctx.amount}. Value ${ctx.valueLabel || 'Today'}.`;
     return { subject, body };
 }
 
@@ -29,7 +29,7 @@ function callDepositUnwind(ctx) {
     const body =
         `Dear ${ctx.salutation || 'Team'},\n\n` +
         `For a/c ${_accountTagWithBookAndBrackets(ctx)},\n\n` +
-        `Please help unwind the ${ctx.ccy} Call Deposit, amount: ${ctx.ccy} ${ctx.amount}. Value Today. Thanks.`;
+        `Please help unwind the ${ctx.ccy} Call Deposit, amount: ${ctx.ccy} ${ctx.amount}. Value ${ctx.valueLabel || 'Today'}. Thanks.`;
     return { subject, body };
 }
 
@@ -46,7 +46,7 @@ function ftdDeposit(ctx) {
         `Amount: ${ctx.ccy} ${ctx.amount}`,
     ];
     if (ctx.rate) lines.push(`Rate to client: ${ctx.rate}%`);
-    lines.push(`Value Today`);
+    lines.push(`Value ${ctx.valueLabel || 'Today'}`);
     lines.push('');
     lines.push('Many thanks.');
     return { subject, body: lines.join('\n') };
@@ -68,9 +68,8 @@ function siLoan(ctx) {
     const tail = instr ? `${instr}, ` : '';
     const body =
         `Hi ${ctx.salutation || 'Team'},\n\n` +
-        `Please kindly help us with below loan instructions. Thanks!\n\n` +
         `For a/c ${_accountTagNoBook(ctx)},\n\n` +
-        `Please help draw ${ctx.ccy} loan ${ctx.ccy} ${ctx.amount} ${ctx.purpose || 'to cover OD'}, rolling on a ${rolling} basis, ${tail}starting from today ${ctx.startDate}.`;
+        `Please help draw ${ctx.ccy} loan ${ctx.ccy} ${ctx.amount} ${ctx.purpose || 'to cover OD'}, rolling on a ${rolling} basis, ${tail}starting from ${ctx.startLabel || 'today'}. Many thanks`;
     return { subject, body };
 }
 

@@ -41,6 +41,12 @@ function startDateLabel(date) {
     return formatDateShort(d);
 }
 
+// "Today" / "Tomorrow" / "8 May 2026" — used in deposit bodies for "Value {label}"
+function valueDateLabel(date) {
+    const s = startDateLabel(date);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function openMailto(to, cc, subject, body) {
     const toStr = Array.isArray(to) ? to.map(r => r.email || r).join(',') : (to || '');
     const ccStr = Array.isArray(cc) ? cc.map(r => r.email || r).join(',') : (cc || '');
@@ -86,4 +92,22 @@ function showWarningModal({ title, body, continueLabel = 'Continue anyway', canc
     modal.show();
 }
 
-window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, openMailto, showWarningModal };
+// Sender email — every generated email auto-CCs this so the sender keeps a copy in their inbox.
+let _myEmail = '';
+async function loadMyEmail() {
+    try {
+        const res = await fetch('/api/me');
+        const j = await res.json();
+        _myEmail = j.email || '';
+    } catch (_) {
+        _myEmail = '';
+    }
+    return _myEmail;
+}
+function myEmail() { return _myEmail; }
+
+// Kick off the load immediately; fetch is fast enough that it'll complete
+// before the user can fill out a form.
+loadMyEmail();
+
+window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, valueDateLabel, openMailto, showWarningModal, loadMyEmail, myEmail };

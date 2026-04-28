@@ -46,39 +46,16 @@
     </ul>
 
     <div class="tab-content">
-        <!-- FX Order tab (unchanged) -->
+        <!-- FX Order tab -->
         <div class="tab-pane fade show active" id="tab-fx" role="tabpanel">
             <div id="formContainer">
-                <div class="mb-3">
-                    <label for="account" class="form-label">Account</label>
-                    <select id="account" class="form-select">
-                        <option value="HK-130381 Next Merchant">HK-130381 Next Merchant</option>
-                        <option value="HK-375298 Super Aim">HK-375298 Super Aim</option>
-                        <option value="SG-229613 Rome Garden">SG-229613 Rome Garden Limited</option>
-                        <option value="HK-375289 Xu Wei">HK-375289 Xu Wei</option>
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label for="recipient" class="form-label">Recipient</label>
-                    <select id="recipient" class="form-select">
-                        <option value="gfim-hk-ia@ubs.com">UBS HK GFIM (gfim-hk-ia@ubs.com)</option>
-                        <option value="ol-fxdac-apac@ubs.com">UBS FX DAC (ol-fxdac-apac@ubs.com)</option>
-                    </select>
-                </div>
-
-                <div class="mb-3" id="clientCodeContainer" style="display: none;">
-                    <label for="clientCode" class="form-label">UBS FX DAC Client Code</label>
-                    <select id="clientCode" class="form-select">
-                        <option value="WMPOSESG1">WMPOSESG1</option>
-                        <option value="WMPOSEHK1">WMPOSEHK1</option>
-                    </select>
-                </div>
+                <div id="fxAccountPicker"></div>
+                <div id="fxRoutingDisplay" class="alert alert-secondary mb-3" style="display:none;"></div>
 
                 <div id="orders"></div>
 
                 <button id="addOrder" class="btn btn-secondary mb-3">Add Another Order</button>
-                <button id="openOutlook" class="btn btn-primary">Generate Email</button>
+                <button id="openOutlook" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
             </div>
         </div>
 
@@ -194,8 +171,8 @@
                 <div class="mb-3 col-md-3">
                     <label for="siRolling" class="form-label">Rolling</label>
                     <select id="siRolling" class="form-select">
-                        <option value="weekly" selected>weekly</option>
-                        <option value="monthly">monthly</option>
+                        <option value="weekly">weekly</option>
+                        <option value="monthly" selected>monthly</option>
                     </select>
                 </div>
             </div>
@@ -226,16 +203,27 @@
 
     <!-- App logic -->
     <script>
-        // ===== FX Order tab (existing behavior, unchanged) =====
-        document.addEventListener('DOMContentLoaded', function() {
-            const recipientSelect = document.getElementById('recipient');
-            const clientCodeContainer = document.getElementById('clientCodeContainer');
-            recipientSelect.addEventListener('change', function() {
-                const isDAC = this.value === 'ol-fxdac-apac@ubs.com';
-                clientCodeContainer.style.display = isDAC ? 'block' : 'none';
-                if (!isDAC) document.getElementById('clientCode').value = 'N/A';
-            });
-        });
+        // ===== FX Order tab =====
+        let fxPicker = null;
+
+        function updateFxRoutingDisplay(account, cp) {
+            const el = document.getElementById('fxRoutingDisplay');
+            if (!account) { el.style.display = 'none'; return; }
+            el.style.display = 'block';
+            if (!cp || !cp.resolvedAs || !cp.to || cp.to.length === 0) {
+                el.className = 'alert alert-warning mb-3';
+                el.textContent = `No FX counterparty configured for ${account.custodian || '?'}/${account.book || '?'} — submit disabled.`;
+                document.getElementById('openOutlook').disabled = true;
+                return;
+            }
+            const isDAC = cp.resolvedAs === 'ubs-hksg-fx-dac';
+            const label = isDAC
+                ? (cp.clientCode ? `UBS FX DAC — Client Code: ${cp.clientCode}` : `UBS FX DAC — Client Code: (TBD; will be omitted from body)`)
+                : (cp.resolvedAs === 'ubs-hksg-fx-gfim' ? 'UBS HK/SG GFIM' : `${cp.resolvedAs} (deposit desk)`);
+            el.className = 'alert alert-info mb-3';
+            el.innerHTML = `Routing to: <strong>${label}</strong> &middot; To: ${cp.to.map(r => r.email).join(', ')}`;
+            document.getElementById('openOutlook').disabled = false;
+        }
 
         function addOrder() {
             const ordersDiv = document.getElementById('orders');
@@ -410,12 +398,25 @@
         addOrder();
         document.getElementById('addOrder').addEventListener('click', addOrder);
 
-        document.getElementById('openOutlook').addEventListener('click', () => {
-            const account = document.getElementById('account').value;
-            const recipient = document.getElementById('recipient').value;
-            const orders = document.querySelectorAll('#orders .order');
-            const clientCode = document.getElementById('clientCode').value;
+        // Mount the FX account picker; auto-resolve routing on select.
+        fxPicker = PoseidonAccountPicker.mountAccountPicker(
+            document.getElementById('fxAccountPicker'),
+            async (account) => {
+                const cp = await PoseidonCounterparty.getCounterparty(account, 'fx');
+                updateFxRoutingDisplay(account, cp);
+            }
+        );
 
+        document.getElementById('openOutlook').addEventListener('click', async () => {
+            const account = fxPicker.getSelected();
+            if (!account) { alert('Please select an account.'); return; }
+            const cp = await PoseidonCounterparty.getCounterparty(account, 'fx');
+            if (!cp || !cp.to || cp.to.length === 0) {
+                alert(`No FX counterparty configured for ${account.custodian}/${account.book}.`);
+                return;
+            }
+
+            const orders = document.querySelectorAll('#orders .order');
             let marketCounter = 0, limitCounter = 0;
             let orderTexts = [];
 
@@ -449,20 +450,13 @@
                 }
             });
 
-            let emailBody = `Hi Team,\n\nFor a/c ${account}`;
-            if (recipient === 'ol-fxdac-apac@ubs.com') emailBody += ` [Client Code: ${clientCode}]`;
-            emailBody += `,\n\nPls help us place below orders. Thanks.\n\n${orderTexts.join('\n\n')}\n`;
+            const salutation = PoseidonCounterparty.counterpartySalutation(cp);
+            let acTagLine = `For a/c ${account.accountNo} ${account.acName}`;
+            if (cp.clientCode) acTagLine += ` [Client Code: ${cp.clientCode}]`;
+            const emailBody = `Hi ${salutation},\n\n${acTagLine},\n\nPls help us place below orders. Thanks.\n\n${orderTexts.join('\n\n')}\n`;
 
             const subject = `FX Orders - ${formatDateForSubject()}`;
-            const cc = 'heidi.cheng@ubs.com;elsa-za.yu@ubs.com;fa@ppgfo.com;trading@ppgfo.com;mark@ppgfo.com';
-            const mailtoLink = `mailto:${recipient}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-
-            if (typeof require !== 'undefined') {
-                const { shell } = require('electron');
-                shell.openExternal(mailtoLink);
-            } else {
-                window.location.href = mailtoLink;
-            }
+            PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), subject, emailBody);
         });
 
         // ===== Call Deposit tab =====
@@ -503,6 +497,7 @@
                 const cp = await PoseidonCounterparty.getCounterparty(account);
                 const salutation = PoseidonCounterparty.counterpartySalutation(cp);
 
+                const valueD = new Date(valueDateInput.value.trim());
                 const ctx = {
                     salutation,
                     book: account.book,
@@ -511,19 +506,14 @@
                     acName: account.acName,
                     ccy,
                     amount: rawAmount,
+                    valueLabel: PoseidonCommon.valueDateLabel(valueD),
                 };
 
                 const tpl = action === 'place'
                     ? PoseidonTemplates.callDepositPlace(ctx)
                     : PoseidonTemplates.callDepositUnwind(ctx);
 
-                const cc = [
-                    ...(cp.ccBackup || []),
-                    'fa@ppgfo.com',
-                    ...(account.pcEmail ? [account.pcEmail] : []),
-                ];
-
-                PoseidonCommon.openMailto(cp.to, cc, tpl.subject, tpl.body);
+                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
             }
 
             generateBtn.addEventListener('click', () => {
@@ -554,10 +544,12 @@
         }
 
         function buildCcList(cp, account) {
+            const me = PoseidonCommon.myEmail();
             return [
                 ...(cp.ccBackup || []),
                 'fa@ppgfo.com',
                 ...(account.pcEmail ? [account.pcEmail] : []),
+                ...(me ? [me] : []),
             ];
         }
 
@@ -604,6 +596,7 @@
                 const cp = await PoseidonCounterparty.getCounterparty(account);
                 // UBS CH accounts are booked at UBS Jersey
                 const bookingEntity = (account.custodian === 'UBS' && account.book === 'CH') ? 'UBS Jersey' : '';
+                const valueD = new Date(valueDateInput.value.trim());
                 const tpl = PoseidonTemplates.ftdDeposit({
                     salutation: PoseidonCounterparty.counterpartySalutation(cp),
                     book: account.book,
@@ -615,6 +608,7 @@
                     tenor,
                     rate: rateInput.value.trim(),
                     bookingEntity,
+                    valueLabel: PoseidonCommon.valueDateLabel(valueD),
                 });
                 PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
             });
@@ -682,6 +676,8 @@
 
         // ===== SI Loan tab =====
         (function initSiLoan() {
+            const SI_DEFAULT_LOAN_INSTRUCTION = 'P+I+-Balance';
+
             const ccySelect = document.getElementById('siCcy');
             const amountInput = document.getElementById('siAmount');
             const startDateInput = document.getElementById('siStartDate');
@@ -692,6 +688,7 @@
 
             fillCurrencySelect(ccySelect);
             attachAmountFormatter(amountInput);
+            loanInstrInput.value = SI_DEFAULT_LOAN_INSTRUCTION;
 
             const today = new Date();
             flatpickr(startDateInput, { defaultDate: today, dateFormat: 'j F Y' });
@@ -701,12 +698,12 @@
                 document.getElementById('siAccountPicker'),
                 (account) => {
                     generateBtn.disabled = false;
-                    // auto-fill loan instruction from the selected account
-                    loanInstrInput.value = account.loanInstruction || '';
+                    // SI Loan body always needs an instruction; prefer account's value, else default
+                    loanInstrInput.value = account.loanInstruction || SI_DEFAULT_LOAN_INSTRUCTION;
                 }
             );
 
-            function buildAndSend() {
+            generateBtn.addEventListener('click', async () => {
                 const account = picker.getSelected();
                 if (!account) return;
                 const sub = picker.getSubAccount();
@@ -714,33 +711,21 @@
                 const rawAmount = amountInput.value.trim();
                 if (!rawAmount || PoseidonCommon.parseNotional(rawAmount) <= 0) { alert('Please enter a valid amount.'); return; }
 
-                PoseidonCounterparty.getCounterparty(account).then(cp => {
-                    const tpl = PoseidonTemplates.siLoan({
-                        salutation: PoseidonCounterparty.counterpartySalutation(cp),
-                        copy: account.copy || account.accountNo,
-                        sub,
-                        acName: account.acName,
-                        ccy,
-                        amount: rawAmount,
-                        rolling: rollingSelect.value,
-                        loanInstruction: loanInstrInput.value.trim(),
-                        purpose: purposeInput.value.trim() || 'to cover OD',
-                        startDate: startDateInput.value.trim(),
-                    });
-                    PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
+                const cp = await PoseidonCounterparty.getCounterparty(account);
+                const startD = new Date(startDateInput.value.trim());
+                const tpl = PoseidonTemplates.siLoan({
+                    salutation: PoseidonCounterparty.counterpartySalutation(cp),
+                    copy: account.copy || account.accountNo,
+                    sub,
+                    acName: account.acName,
+                    ccy,
+                    amount: rawAmount,
+                    rolling: rollingSelect.value,
+                    loanInstruction: loanInstrInput.value.trim() || SI_DEFAULT_LOAN_INSTRUCTION,
+                    purpose: purposeInput.value.trim() || 'to cover OD',
+                    startLabel: PoseidonCommon.startDateLabel(startD),
                 });
-            }
-
-            generateBtn.addEventListener('click', () => {
-                if (!loanInstrInput.value.trim()) {
-                    PoseidonCommon.showWarningModal({
-                        title: 'Loan Instruction is empty',
-                        body: 'This account has no Loan Instruction on file (and you haven\'t typed one). The email body will be missing that piece. Continue anyway?',
-                        onContinue: buildAndSend,
-                    });
-                } else {
-                    buildAndSend();
-                }
+                PoseidonCommon.openMailto(cp.to, buildCcList(cp, account), tpl.subject, tpl.body);
             });
         })();
     </script>

@@ -122,23 +122,44 @@ function loadCounterparties() {
     return cachedCounterparties;
 }
 
-function resolveCounterparty({ accountNo, custodian, book }) {
+function resolveCounterparty({ accountNo, custodian, book, mode }) {
     const cfg = loadCounterparties();
     const recipients = cfg.recipients || {};
     const byKey = cfg.byKey || {};
     const byAccount = cfg.byAccount || {};
+    const fxByKey = cfg.fxByKey || {};
+    const fxByAccount = cfg.fxByAccount || {};
+    const fxClientCodes = cfg.fxClientCodes || {};
 
-    const acnoBare = String(accountNo || '').replace(/-/g, '');
-    let recipientName = byAccount[accountNo] || byAccount[acnoBare];
+    const acno = String(accountNo || '');
+    const acnoBare = acno.replace(/-/g, '');
+    const acnoTail = acnoBare.replace(/^0+/, '').slice(-6); // matches the 6-digit Copy form (e.g. "130381")
+    const acnoCandidates = [acno, acnoBare, acnoTail].filter(Boolean);
 
-    if (!recipientName) {
-        const key = `${custodian || ''}-${book || ''}`;
-        recipientName = byKey[key];
+    function lookup(account, key, accountTable, keyTable) {
+        for (const c of acnoCandidates) {
+            if (accountTable[c]) return accountTable[c];
+        }
+        return keyTable[key];
     }
 
-    if (!recipientName) return { to: [], ccBackup: [], resolvedAs: null };
+    const key = `${custodian || ''}-${book || ''}`;
+    let recipientName, clientCode = '';
+
+    if (mode === 'fx') {
+        recipientName = lookup(acno, key, fxByAccount, fxByKey);
+        for (const c of acnoCandidates) {
+            if (fxClientCodes[c]) { clientCode = fxClientCodes[c]; break; }
+        }
+        // Fall back to deposit routing if FX has nothing for this combo
+        if (!recipientName) recipientName = lookup(acno, key, byAccount, byKey);
+    } else {
+        recipientName = lookup(acno, key, byAccount, byKey);
+    }
+
+    if (!recipientName) return { to: [], ccBackup: [], resolvedAs: null, clientCode };
     const r = recipients[recipientName] || { to: [], ccBackup: [] };
-    return { to: r.to || [], ccBackup: r.ccBackup || [], resolvedAs: recipientName };
+    return { to: r.to || [], ccBackup: r.ccBackup || [], resolvedAs: recipientName, clientCode };
 }
 
 function createServer() {
@@ -206,8 +227,12 @@ function createServer() {
     });
 
     app.get('/api/counterparty', (req, res) => {
-        const { accountNo, custodian, book } = req.query;
-        res.json(resolveCounterparty({ accountNo, custodian, book }));
+        const { accountNo, custodian, book, mode } = req.query;
+        res.json(resolveCounterparty({ accountNo, custodian, book, mode }));
+    });
+
+    app.get('/api/me', (req, res) => {
+        res.json({ email: process.env.USER_EMAIL || '' });
     });
 
     httpServer = app.listen(3000);

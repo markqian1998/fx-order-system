@@ -69,6 +69,20 @@
         { "name": "Tanya",    "email": "Tanya@bankofsingapore.com" }
       ],
       "ccBackup": []
+    },
+    "ubs-hksg-fx-gfim": {
+      "to":       [{ "name": "UBS HK GFIM", "email": "gfim-hk-ia@ubs.com" }],
+      "ccBackup": [
+        { "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" },
+        { "name": "Yu, Elsa",     "email": "elsa-za.yu@ubs.com" }
+      ]
+    },
+    "ubs-hksg-fx-dac": {
+      "to":       [{ "name": "UBS FX DAC", "email": "ol-fxdac-apac@ubs.com" }],
+      "ccBackup": [
+        { "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" },
+        { "name": "Yu, Elsa",     "email": "elsa-za.yu@ubs.com" }
+      ]
     }
   },
   "byKey": {
@@ -89,5 +103,23 @@
     "22607898": "nomura-stan",
     "22958822": "nomura-stan",
     "22266669": "nomura-stan"
+  },
+  "fxByKey": {
+    "_comment": "FX-Order-tab routing per Custodian-Book. Falls back to byKey for any combo not listed here (i.e. non-UBS-HK/SG banks reuse their deposit desk).",
+    "UBS-HK": "ubs-hksg-fx-gfim",
+    "UBS-SG": "ubs-hksg-fx-gfim"
+  },
+  "fxByAccount": {
+    "_comment": "Per-account FX overrides. The 4 listed UBS HK/SG accounts have direct access to the FX DAC desk.",
+    "130381": "ubs-hksg-fx-dac",
+    "375298": "ubs-hksg-fx-dac",
+    "229613": "ubs-hksg-fx-dac",
+    "190521": "ubs-hksg-fx-dac"
+  },
+  "fxClientCodes": {
+    "_comment": "Per-account FX DAC client codes. Body inserts [Client Code: <code>] when present.",
+    "130381": "WMPOSEHK3",
+    "375298": "WMPOSEHK2",
+    "229613": "WMPOSESG1"
   }
 }
