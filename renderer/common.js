@@ -59,6 +59,26 @@ function openMailto(to, cc, subject, body) {
     }
 }
 
+// One-shot toast (auto-dismiss 3s). kind: 'success' | 'danger' | 'warning' | 'info'.
+function showToast(message, kind = 'info') {
+    const root = document.getElementById('appToast');
+    const body = document.getElementById('appToastBody');
+    if (!root || !body) { console.log(`[toast:${kind}]`, message); return; }
+    body.textContent = message;
+    // Reset Bootstrap text-bg-* classes
+    root.className = `toast text-bg-${kind} border-0`;
+    bootstrap.Toast.getOrCreateInstance(root, { delay: 3000 }).show();
+}
+
+const _CUSTODIAN_COLOR = {
+    UBS: 'primary', Nomura: 'success', UOBKH: 'warning',
+    JB: 'info', LGT: 'secondary', CAI: 'dark', BOS: 'danger',
+    IBKR: 'light', MS: 'light',
+};
+function custodianColor(custodian) {
+    return _CUSTODIAN_COLOR[custodian] || 'light';
+}
+
 function showWarningModal({ title, body, continueLabel = 'Continue anyway', cancelLabel = 'Cancel', onContinue }) {
     const existing = document.getElementById('sharedWarningModal');
     if (existing) existing.remove();
@@ -110,4 +130,4 @@ function myEmail() { return _myEmail; }
 // before the user can fill out a form.
 loadMyEmail();
 
-window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, valueDateLabel, openMailto, showWarningModal, loadMyEmail, myEmail };
+window.PoseidonCommon = { formatNotional, parseNotional, formatDateForSubject, formatDateShort, formatDateLong, startDateLabel, valueDateLabel, openMailto, showWarningModal, showToast, custodianColor, loadMyEmail, myEmail };

@@ -2,7 +2,12 @@ function mountAccountPicker(rootEl, onSelect) {
     rootEl.innerHTML = `
         <div class="mb-3 position-relative">
             <label class="form-label">Account <span class="text-muted small">(type account number <em>or</em> name — both work)</span></label>
-            <input type="text" class="form-control account-search" autocomplete="off" placeholder="e.g. 130381  /  Next Merchant">
+            <div class="input-group">
+                <input type="text" class="form-control account-search" autocomplete="off" placeholder="e.g. 130381  /  Next Merchant">
+                <span class="input-group-text d-none account-spinner">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                </span>
+            </div>
             <div class="list-group account-results position-absolute w-100" style="z-index:10; max-height:240px; overflow-y:auto; display:none;"></div>
         </div>
         <div class="mb-3">
@@ -12,11 +17,12 @@ function mountAccountPicker(rootEl, onSelect) {
         <div class="account-display border rounded p-2 mb-3 bg-light" style="display:none;">
             <div><strong>Account No:</strong> <span class="d-acno"></span></div>
             <div><strong>A/C Name:</strong> <span class="d-name"></span></div>
-            <div><strong>Book / Custodian:</strong> <span class="d-book"></span> / <span class="d-custodian"></span></div>
+            <div><strong>Book:</strong> <span class="d-book"></span> &nbsp; <strong>Custodian:</strong> <span class="d-custodian-badge"></span></div>
         </div>
     `;
 
     const search = rootEl.querySelector('.account-search');
+    const spinner = rootEl.querySelector('.account-spinner');
     const results = rootEl.querySelector('.account-results');
     const sub = rootEl.querySelector('.account-sub');
     const display = rootEl.querySelector('.account-display');
@@ -62,11 +68,15 @@ function mountAccountPicker(rootEl, onSelect) {
         rootEl.querySelector('.d-acno').textContent = a.accountNo;
         rootEl.querySelector('.d-name').textContent = a.acName;
         rootEl.querySelector('.d-book').textContent = a.book || '-';
-        rootEl.querySelector('.d-custodian').textContent = a.custodian || '-';
+        const badge = rootEl.querySelector('.d-custodian-badge');
+        const color = (window.PoseidonCommon && window.PoseidonCommon.custodianColor) ? window.PoseidonCommon.custodianColor(a.custodian) : 'light';
+        badge.className = `badge text-bg-${color}`;
+        badge.textContent = a.custodian || '-';
         if (onSelect) onSelect(a);
     }
 
     async function fetchAndRender(q) {
+        spinner.classList.remove('d-none');
         try {
             const res = await fetch(`/api/accounts?q=${encodeURIComponent(q)}`);
             if (!res.ok) {
@@ -79,6 +89,8 @@ function mountAccountPicker(rootEl, onSelect) {
         } catch (e) {
             results.innerHTML = `<div class="list-group-item text-danger">${e.message}</div>`;
             results.style.display = 'block';
+        } finally {
+            spinner.classList.add('d-none');
         }
     }
 
