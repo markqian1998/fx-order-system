@@ -86,6 +86,39 @@ function _bodyToCalibriHtml(plainBody) {
     return `<div style="font-family: Calibri, sans-serif; font-size: 12pt;">${htmlLines.join('')}</div>`;
 }
 
+// Detect if Electron's `require` is available (renderer with nodeIntegration on).
+// In a plain browser (the web deployment), `require` is undefined.
+function _isElectron() {
+    return typeof require !== 'undefined' && (() => {
+        try { require('electron'); return true; } catch (_) { return false; }
+    })();
+}
+
+async function _writeRichClipboard(plainBody, htmlBody) {
+    if (_isElectron()) {
+        try {
+            const { clipboard } = require('electron');
+            clipboard.write({ text: plainBody, html: htmlBody });
+            return true;
+        } catch (e) {
+            console.warn('Electron clipboard.write failed:', e);
+        }
+    }
+    // Web fallback: navigator.clipboard.write requires HTTPS + user-gesture context.
+    if (navigator.clipboard && window.ClipboardItem) {
+        try {
+            await navigator.clipboard.write([new ClipboardItem({
+                'text/html':  new Blob([htmlBody],  { type: 'text/html'  }),
+                'text/plain': new Blob([plainBody], { type: 'text/plain' }),
+            })]);
+            return true;
+        } catch (e) {
+            console.warn('navigator.clipboard.write failed (non-fatal):', e);
+        }
+    }
+    return false;
+}
+
 function openMailto(to, cc, subject, body) {
     try {
         // Plain body for the mailto: URL — append 4 newlines = 3 blank visible lines for signature spacing.
@@ -93,27 +126,21 @@ function openMailto(to, cc, subject, body) {
         // Rich HTML version on clipboard, so user can ⌘V to apply Calibri 12 + bold.
         const htmlBody = _bodyToCalibriHtml(body);
 
-        if (typeof require !== 'undefined') {
-            try {
-                const { clipboard } = require('electron');
-                clipboard.write({ text: plainBody, html: htmlBody });
-            } catch (e) {
-                console.warn('Clipboard write failed (non-fatal):', e);
-            }
-        }
+        // Fire-and-forget clipboard write (works on Electron sync, web async).
+        _writeRichClipboard(plainBody, htmlBody);
 
         const toStr = Array.isArray(to) ? to.map(r => r.email || r).join(',') : (to || '');
         const ccStr = Array.isArray(cc) ? cc.map(r => r.email || r).join(',') : (cc || '');
         const url = `mailto:${encodeURIComponent(toStr)}?cc=${encodeURIComponent(ccStr)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainBody)}`;
-        console.log('[openMailto] opening URL (length:', url.length, '):', url.substring(0, 150) + '...');
 
-        if (typeof require !== 'undefined') {
+        if (_isElectron()) {
             const { shell } = require('electron');
             shell.openExternal(url).catch(err => {
                 console.error('[openMailto] shell.openExternal failed:', err);
                 showToast(`Failed to open email client: ${err.message}`, 'danger');
             });
         } else {
+            // Web fallback: assigning to window.location.href triggers the OS mailto: handler.
             window.location.href = url;
         }
     } catch (e) {

@@ -1,0 +1,49 @@
+# Deploys the web app to Azure App Service on every push to main.
+#
+# Setup (one-time, in GitHub repo settings):
+#   1. Create the Azure App Service first (see README "Azure setup" section).
+#   2. In Azure Portal → App Service → Get publish profile (downloads .PublishSettings file).
+#   3. In GitHub → Settings → Secrets → Actions → New repository secret:
+#        Name: AZURE_WEBAPP_PUBLISH_PROFILE
+#        Value: contents of the .PublishSettings file (paste verbatim)
+#   4. Update AZURE_WEBAPP_NAME below to match your App Service name.
+#
+# After that, every push to main triggers an automatic deploy.
+
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: poseidon-trade-ops    # ← update if you used a different name in Azure
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --omit=optional
+
+      - name: Strip dev-only artifacts
+        run: |
+          rm -rf .git node_modules/electron node_modules/electron-builder
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .

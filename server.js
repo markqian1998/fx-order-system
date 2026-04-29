@@ -257,7 +257,16 @@ function createServer() {
     });
 
     app.get('/api/me', (req, res) => {
-        res.json({ email: process.env.USER_EMAIL || '' });
+        // Azure App Service "Easy Auth" injects the user's email here when SSO is on.
+        // Local dev (Electron / bare node) falls back to USER_EMAIL env var.
+        const ssoEmail = req.headers['x-ms-client-principal-name'] || '';
+        const email = ssoEmail || process.env.USER_EMAIL || '';
+        res.json({ email });
+    });
+
+    // Health check endpoint for Azure App Service / load balancer probes.
+    app.get('/health', (req, res) => {
+        res.json({ status: 'ok' });
     });
 
     app.get('/api/version', (req, res) => {

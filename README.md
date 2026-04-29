@@ -1,6 +1,14 @@
 # poseidon-trade-ops
 
-An Electron desktop tool for the Poseidon trading desk that turns recurring trade-instruction emails (FX orders, Call/FTD deposits, one-off loans, SI loans) into a few clicks. Pulls the live account list from Airtable, resolves the right counterparty (RM + CC list) per bank/desk, and opens a pre-filled draft in the user's default mail client.
+> **🌐 Web app (recommended)**: `https://poseidon-trade-ops.azurewebsites.net` — log in with your PPG Microsoft account.
+>
+> The desktop Electron app below still works for legacy users but is no longer the canonical path.
+
+A tool for the Poseidon trading desk that turns recurring trade-instruction emails (FX orders, Call/FTD deposits, one-off loans, SI loans) into a few clicks. Pulls the live account list from Airtable, resolves the right counterparty (RM + CC list) per bank/desk, and opens a pre-filled draft in the user's default mail client.
+
+The same codebase runs in two modes:
+- **Web** (Azure App Service + Microsoft 365 SSO) — for the team
+- **Electron desktop** (`npm start`) — for local dev or legacy users
 
 ---
 

@@ -4,10 +4,14 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "web": "node -r dotenv/config server.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder -mw",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win --x64"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "build": {
     "asar": false,
