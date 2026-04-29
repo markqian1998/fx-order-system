@@ -1,6 +1,6 @@
 # poseidon-trade-ops
 
-> **🌐 Web app (recommended)**: `https://poseidon-trade-ops.azurewebsites.net` — log in with your PPG Microsoft account.
+> **🌐 Web app (recommended)**: `https://poseidon-trade-ops-bgfgebbca2eteqcb.southeastasia-01.azurewebsites.net` — log in with your PPG Microsoft account.
 >
 > The desktop Electron app below still works for legacy users but is no longer the canonical path.
 
