@@ -23,6 +23,19 @@
         .tab-content { padding-top: 20px; }
         /* Disable text selection on chrome (nav, buttons) but allow it on form values + display blocks */
         .nav-tabs, .btn, .btn-group, label.form-label { -webkit-user-select: none; user-select: none; }
+
+        /* Tab category coloring — keep inactive tabs grey, color the active one by category */
+        .nav-tabs .nav-link.cat-fx.active      { color: #0d6efd; border-color: #dee2e6 #dee2e6 #0d6efd; }
+        .nav-tabs .nav-link.cat-deposit.active { color: #198754; border-color: #dee2e6 #dee2e6 #198754; }
+        .nav-tabs .nav-link.cat-loan.active    { color: #fd7e14; border-color: #dee2e6 #dee2e6 #fd7e14; }
+        .nav-tabs .nav-link.active { border-bottom-width: 2px; }
+
+        /* Subtle dividers between tab categories */
+        .tab-divider {
+            display: flex; align-items: center;
+            color: #ced4da; padding: 0 .5rem;
+            font-size: 1.1rem; user-select: none;
+        }
     </style>
 </head>
 <body class="container mt-4">
@@ -34,19 +47,21 @@
     <div class="d-flex align-items-center mb-2">
         <ul class="nav nav-tabs flex-grow-1" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-fx" type="button">💱 FX Order</button>
+                <button class="nav-link cat-fx active" data-bs-toggle="tab" data-bs-target="#tab-fx" type="button">💱 FX Order</button>
+            </li>
+            <li class="tab-divider">|</li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link cat-deposit" data-bs-toggle="tab" data-bs-target="#tab-cd" type="button">💰 Call Deposit</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cd" type="button">💰 Call Deposit</button>
+                <button class="nav-link cat-deposit" data-bs-toggle="tab" data-bs-target="#tab-ftd" type="button">💰 FTD Deposit</button>
+            </li>
+            <li class="tab-divider">|</li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link cat-loan" data-bs-toggle="tab" data-bs-target="#tab-ool" type="button">🏦 One-off Loan</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ftd" type="button">💰 FTD Deposit</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ool" type="button">🏦 One-off Loan</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-si" type="button">🏦 SI Loan</button>
+                <button class="nav-link cat-loan" data-bs-toggle="tab" data-bs-target="#tab-si" type="button">🏦 SI Loan</button>
             </li>
         </ul>
         <button id="refreshAccountsBtn" class="btn btn-sm btn-outline-secondary ms-2" title="Refresh accounts from Airtable">🔄 Refresh</button>
@@ -61,8 +76,10 @@
 
                 <div id="orders"></div>
 
-                <button id="addOrder" class="btn btn-secondary mb-3">Add Another Order</button>
-                <button id="openOutlook" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <button id="addOrder" class="btn btn-secondary">Add Another Order</button>
+                    <button id="openOutlook" class="btn btn-primary btn-lg px-4" disabled>Send FX Orders</button>
+                </div>
             </div>
         </div>
 
@@ -96,8 +113,10 @@
                 </div>
             </div>
 
-            <button id="cdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
-            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
+            <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
+                <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
+                <button id="cdGenerate" class="btn btn-primary btn-lg px-4" disabled>Send Call Deposit Order</button>
+            </div>
         </div>
 
         <!-- FTD Deposit tab -->
@@ -138,8 +157,10 @@
                     </div>
                 </div>
             </div>
-            <button id="ftdGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
-            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
+            <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
+                <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
+                <button id="ftdGenerate" class="btn btn-primary btn-lg px-4" disabled>Send FTD Order</button>
+            </div>
         </div>
 
         <!-- One-off Loan tab -->
@@ -171,8 +192,10 @@
                     <input type="text" id="oolPurpose" class="form-control" value="to cover OD">
                 </div>
             </details>
-            <button id="oolGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
-            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
+            <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
+                <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
+                <button id="oolGenerate" class="btn btn-primary btn-lg px-4" disabled>Send Loan Instruction</button>
+            </div>
         </div>
 
         <!-- SI Loan tab -->
@@ -211,10 +234,16 @@
                     <input type="text" id="siPurpose" class="form-control" value="to cover OD">
                 </div>
             </details>
-            <button id="siGenerate" class="btn btn-primary btn-lg px-4" disabled>Generate Email</button>
-            <button class="btn btn-link text-muted small ms-2 clear-tab-btn" type="button">Clear all</button>
+            <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
+                <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
+                <button id="siGenerate" class="btn btn-primary btn-lg px-4" disabled>Send SI Loan Instruction</button>
+            </div>
         </div>
     </div>
+
+    <footer class="text-center text-muted small mt-5 pb-3" id="appFooter">
+        <span id="appVersion">v—</span>
+    </footer>
 
     <!-- Toast container (used by PoseidonCommon.showToast) -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
@@ -254,11 +283,20 @@
                 return;
             }
             const isDAC = cp.resolvedAs === 'ubs-hksg-fx-dac';
-            const label = isDAC
-                ? (cp.clientCode ? `UBS FX DAC — Client Code: ${cp.clientCode}` : `UBS FX DAC — Client Code: (TBD; will be omitted from body)`)
-                : (cp.resolvedAs === 'ubs-hksg-fx-gfim' ? 'UBS HK/SG GFIM' : `${cp.resolvedAs} (deposit desk)`);
+            const isFallback = cp.resolvedAs && !cp.resolvedAs.startsWith('ubs-hksg-fx-');
+            let label = cp.displayName || cp.resolvedAs;
+            if (isDAC) label += cp.clientCode ? ` — Client Code: ${cp.clientCode}` : ` — Client Code: (TBD)`;
+            else if (isFallback) label += ' (deposit desk)';
+
             el.className = 'alert alert-info mb-3';
-            el.innerHTML = `Routing to: <strong>${label}</strong> &middot; To: ${cp.to.map(r => r.email).join(', ')}`;
+            const toLine = cp.to.map(r => r.email).join(', ');
+            const ccEmails = [...(cp.ccBackup || []).map(r => r.email), 'fa@ppgfo.com'];
+            if (account.pcEmail) ccEmails.push(account.pcEmail);
+            const me = PoseidonCommon.myEmail();
+            if (me) ccEmails.push(`${me} (you)`);
+            el.innerHTML =
+                `<div>Routing to: <strong>${label}</strong> &middot; To: ${toLine}</div>` +
+                `<div class="small text-muted mt-1">CC: ${ccEmails.join(', ')}</div>`;
             document.getElementById('openOutlook').disabled = false;
         }
 
@@ -638,6 +676,15 @@
             },
         });
 
+        // Call Deposit submit button text reflects Place/Unwind selection
+        document.querySelectorAll('input[name="cdAction"]').forEach(r => {
+            r.addEventListener('change', () => {
+                const action = document.querySelector('input[name="cdAction"]:checked').value;
+                document.getElementById('cdGenerate').textContent =
+                    action === 'place' ? 'Send Call Deposit Order' : 'Send Unwind Order';
+            });
+        });
+
         // ===== FTD Deposit (factory) =====
         (() => {
             const tenorSelect = document.getElementById('ftdTenor');
@@ -761,6 +808,12 @@
             },
             template: 'siLoan',
         });
+
+        // ===== Footer version =====
+        fetch('/api/version').then(r => r.json()).then(({ version, commit }) => {
+            const v = document.getElementById('appVersion');
+            if (v) v.textContent = `Poseidon Trade Ops v${version || '—'}${commit ? ` · ${commit}` : ''}`;
+        }).catch(() => {});
 
         // ===== Auto-focus account search when switching tabs =====
         document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {

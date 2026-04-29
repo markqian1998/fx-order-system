@@ -14,7 +14,8 @@ function mountAccountPicker(rootEl, onSelect) {
             <label class="form-label">Sub-account (optional)</label>
             <input type="text" class="form-control account-sub" placeholder="e.g. 01" maxlength="6">
         </div>
-        <div class="account-display border rounded p-2 mb-3 bg-light" style="display:none;">
+        <div class="account-display border rounded p-2 mb-3 bg-light position-relative" style="display:none;">
+            <button type="button" class="btn btn-sm btn-link text-muted position-absolute top-0 end-0 m-1 account-change-btn" style="text-decoration:none;">✕ Change</button>
             <div><strong>Account No:</strong> <span class="d-acno"></span></div>
             <div><strong>A/C Name:</strong> <span class="d-name"></span></div>
             <div><strong>Book:</strong> <span class="d-book"></span> &nbsp; <strong>Custodian:</strong> <span class="d-custodian-badge"></span></div>
@@ -134,6 +135,15 @@ function mountAccountPicker(rootEl, onSelect) {
     document.addEventListener('click', (e) => {
         if (!rootEl.contains(e.target)) results.style.display = 'none';
     });
+
+    // "Change" link in the account-display block: clear + focus search
+    const changeBtn = rootEl.querySelector('.account-change-btn');
+    if (changeBtn) {
+        changeBtn.addEventListener('click', () => {
+            api.clear();
+            search.focus();
+        });
+    }
 
     return api;
 }

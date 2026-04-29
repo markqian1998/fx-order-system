@@ -54,7 +54,15 @@ async function _routingFor(tabId, account, mode) {
         return;
     }
     el.className = 'alert alert-info mb-3';
-    el.innerHTML = `Routing to: <strong>${cp.resolvedAs}</strong> &middot; To: ${cp.to.map(r => r.email).join(', ')}`;
+    const desk = cp.displayName || cp.resolvedAs;
+    const toLine = cp.to.map(r => r.email).join(', ');
+    const ccEmails = [...(cp.ccBackup || []).map(r => r.email), 'fa@ppgfo.com'];
+    if (account.pcEmail) ccEmails.push(account.pcEmail);
+    const me = PoseidonCommon.myEmail();
+    if (me) ccEmails.push(`${me} (you)`);
+    el.innerHTML =
+        `<div>Routing to: <strong>${desk}</strong> &middot; To: ${toLine}</div>` +
+        `<div class="small text-muted mt-1">CC: ${ccEmails.join(', ')}</div>`;
 }
 
 function _buildCcList(cp, account) {

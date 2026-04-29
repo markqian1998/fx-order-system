@@ -1,16 +1,20 @@
 {
-  "_comment": "Counterparty (banker) routing. `recipients` defines the email lists per desk. `byKey` maps Account.Custodian-Book to a desk; `byAccount` overrides the key lookup for specific account numbers (e.g. Nomura SG accounts split between Stan and Cheery). The renderer auto-adds fa@ppgfo.com and the account's PC email — do NOT duplicate those here.",
+  "_comment": "Counterparty (banker) routing. `recipients` defines the email lists per desk + a human-readable displayName for the routing UI. `byKey` maps Account.Custodian-Book to a desk; `byAccount` overrides the key lookup for specific account numbers (e.g. Nomura SG accounts split between Stan and Cheery). The renderer auto-adds fa@ppgfo.com and the account's PC email — do NOT duplicate those here.",
   "recipients": {
     "ubs-hksg": {
+      "displayName": "UBS HK/SG",
       "to":       [{ "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" }],
       "ccBackup": [{ "name": "Yuen, Ryan",  "email": "ryan.yuen@ubs.com" }]
     },
     "ubs-ch": {
+      "displayName": "UBS CH (Jersey)",
       "to": [
         { "name": "Jessica Hendrix", "email": "jessica.hendrix@ubs.com" },
-        { "name": "Lilian Wong",      "email": "lilian-za.wong@ubs.com" }]
+        { "name": "Lilian Wong",     "email": "lilian-za.wong@ubs.com" }
+      ]
     },
     "uobkh-hksg": {
+      "displayName": "UOBKH HK/SG",
       "to": [
         { "name": "Stephanie Leung", "email": "stephanie.leung@uobkayhian.com.hk" },
         { "name": "Elly Hui",        "email": "elly.hui@uobkayhian.com.hk" }
@@ -21,6 +25,7 @@
       ]
     },
     "nomura-stan": {
+      "displayName": "Nomura SG (Stan team)",
       "to": [
         { "name": "Karen Leung", "email": "karen.leung2@nomura.com" }
       ],
@@ -30,6 +35,7 @@
       ]
     },
     "nomura-cheery": {
+      "displayName": "Nomura SG (Cheery team)",
       "to": [
         { "name": "Harry Bao",  "email": "harry.bao@nomura.com" },
         { "name": "Sirena Au",  "email": "sirena.au@nomura.com" }
@@ -39,6 +45,7 @@
       ]
     },
     "jb-sg": {
+      "displayName": "Julius Baer SG",
       "to": [
         { "name": "JBHK EAM Trades", "email": "eam.hk.trades@juliusbaer.com" }
       ],
@@ -49,10 +56,12 @@
       ]
     },
     "lgt-hk": {
+      "displayName": "LGT HK",
       "to":       [{ "name": "Ada Lo",   "email": "ada.lo@lgt.com" }],
       "ccBackup": [{ "name": "David Pun", "email": "david.pun@lgt.com" }]
     },
     "lgt-sg": {
+      "displayName": "LGT SG",
       "to": [{ "name": "Virginia Lo", "email": "virginia.lo@lgt.com" }],
       "ccBackup": [
         { "name": "Melanie Tam",  "email": "melanie.tam@lgt.com" },
@@ -60,10 +69,12 @@
       ]
     },
     "cai-sg": {
+      "displayName": "CA Indosuez SG",
       "to":       [{ "name": "Roseline Lau", "email": "roseline.lau@ca-indosuez.sg" }],
       "ccBackup": [{ "name": "Wei Keong Ho", "email": "weikeong.ho@ca-indosuez.sg" }]
     },
     "bos-sg": {
+      "displayName": "Bank of Singapore",
       "to": [
         { "name": "Peggy Li", "email": "Peggy.Li@Bankofsingapore.com" },
         { "name": "Tanya",    "email": "Tanya@bankofsingapore.com" }
@@ -71,6 +82,7 @@
       "ccBackup": []
     },
     "ubs-hksg-fx-gfim": {
+      "displayName": "UBS HK/SG GFIM",
       "to":       [{ "name": "UBS HK GFIM", "email": "gfim-hk-ia@ubs.com" }],
       "ccBackup": [
         { "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" },
@@ -78,6 +90,7 @@
       ]
     },
     "ubs-hksg-fx-dac": {
+      "displayName": "UBS FX DAC",
       "to":       [{ "name": "UBS FX DAC", "email": "ol-fxdac-apac@ubs.com" }],
       "ccBackup": [
         { "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" },

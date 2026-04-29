@@ -157,9 +157,15 @@ function resolveCounterparty({ accountNo, custodian, book, mode }) {
         recipientName = lookup(acno, key, byAccount, byKey);
     }
 
-    if (!recipientName) return { to: [], ccBackup: [], resolvedAs: null, clientCode };
+    if (!recipientName) return { to: [], ccBackup: [], resolvedAs: null, displayName: null, clientCode };
     const r = recipients[recipientName] || { to: [], ccBackup: [] };
-    return { to: r.to || [], ccBackup: r.ccBackup || [], resolvedAs: recipientName, clientCode };
+    return {
+        to: r.to || [],
+        ccBackup: r.ccBackup || [],
+        resolvedAs: recipientName,
+        displayName: r.displayName || recipientName,
+        clientCode,
+    };
 }
 
 function createServer() {
@@ -252,6 +258,29 @@ function createServer() {
 
     app.get('/api/me', (req, res) => {
         res.json({ email: process.env.USER_EMAIL || '' });
+    });
+
+    app.get('/api/version', (req, res) => {
+        let version = 'unknown', commit = '';
+        try {
+            const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+            version = pkg.version || version;
+        } catch (_) {}
+        try {
+            const headPath = path.join(__dirname, '.git', 'HEAD');
+            if (fs.existsSync(headPath)) {
+                const head = fs.readFileSync(headPath, 'utf8').trim();
+                let sha = '';
+                if (head.startsWith('ref: ')) {
+                    const refPath = path.join(__dirname, '.git', head.slice(5));
+                    if (fs.existsSync(refPath)) sha = fs.readFileSync(refPath, 'utf8').trim();
+                } else {
+                    sha = head;
+                }
+                commit = sha.slice(0, 7);
+            }
+        } catch (_) {}
+        res.json({ version, commit });
     });
 
     httpServer = app.listen(3000);

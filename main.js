@@ -42,9 +42,9 @@ function createWindow() {
     // 创建主浏览器窗口配置
     mainWindow = new BrowserWindow({
         width: 1280,         // 默认宽度
-        height: 800,        // 默认高度
-        minWidth: 800,      // 最小宽度限制
-        minHeight: 600,     // 最小高度限制
+        height: 880,        // 默认高度
+        minWidth: 1100,     // 最小宽度限制（form 在 < 1100 会换行错乱）
+        minHeight: 700,     // 最小高度限制
         webPreferences: {
             nodeIntegration: true,       // 启用Node集成
             contextIsolation: false      // 关闭上下文隔离（注意安全风险）
