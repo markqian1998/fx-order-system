@@ -292,7 +292,9 @@ function createServer() {
         res.json({ version, commit });
     });
 
-    httpServer = app.listen(3000);
+    // Azure App Service injects PORT (typically 8080); Electron / local dev use 3000.
+    const port = process.env.PORT || 3000;
+    httpServer = app.listen(port, () => console.log(`Server listening on :${port}`));
     return httpServer;
 }
 
