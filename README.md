@@ -1,17 +1,19 @@
-# fx-order-system
+# poseidon-trade-ops
 
-A system which helps PPFGO traders place FX orders via email in a faster way.
+An Electron desktop tool for the Poseidon trading desk. Generates pre-filled emails for FX orders, Call/FTD deposits, and one-off / SI loans across UBS, Nomura, UOBKH, JB, LGT, CAI, and BOS counterparties.
 
-The `fx-order-system` is a Node.js-based application designed to streamline the process of placing FX (foreign exchange) orders via email for PPFGO traders. It features a user-friendly interface, email integration, and real-time data support to enhance efficiency in order execution.
+Account list is pulled from Airtable; counterparty routing (which RM gets the email per bank/desk) lives in `counterparty.json`.
 
 ---
 
 ## Features
 
-- **Email-Based Order Placement**: Allows traders to submit FX orders directly through email  
-- **Real-Time Data**: Displays spot references and recent trading data for FX pairs  
-- **User Interface**: Simple HTML-based interface for easy order input and tracking  
-- **Customizable Intervals**: Supports configurable data intervals for market analysis  
+- **5 tabs**: FX Order, Call Deposit, FTD Deposit, One-off Loan, SI Loan
+- **Airtable-driven accounts**: Search by short number or name; routing auto-resolves per bank/desk
+- **UBS HK/SG FX DAC routing**: 4 listed accounts auto-route to FX DAC with per-account client codes
+- **Pre-checks**: Call Deposit Place < 50K USD warning; currency-precision rounding (JPY/KRW/TWD/HKD)
+- **Charts**: USDJPY-style spot reference for FX limit orders (Yahoo Finance, 60s cache)
+- **Rich email formatting**: mailto opens with plain text + Calibri 12 + bold a/c line copied to clipboard for ⌘V paste
 
 ---
 
@@ -36,8 +38,8 @@ The app fetches the account list from Airtable. Each user needs their own Person
    | Mode             | Path                                                                 |
    | ---------------- | -------------------------------------------------------------------- |
    | Dev (`npm start`)| `<repo>/.env`                                                        |
-   | Installed (Mac)  | `~/Library/Application Support/Poseidon FX Orders/.env`              |
-   | Installed (Win)  | `%APPDATA%\Poseidon FX Orders\.env`                                  |
+   | Installed (Mac)  | `~/Library/Application Support/Poseidon Trade Ops/.env`              |
+   | Installed (Win)  | `%APPDATA%\Poseidon Trade Ops\.env`                                  |
 
 3. Use `.env.example` in this repo as the template:
 
@@ -49,7 +51,7 @@ The app fetches the account list from Airtable. Each user needs their own Person
 
 The app reads `userData/.env` first; if `AIRTABLE_PAT` is missing there, it falls back to `<repo>/.env` (dev convenience).
 
-`bankers.json` (in the repo root) maps each bank's custodian code to the RM and backup CC. Update it as relationships change — it ships with the app.
+`counterparty.json` (in the repo root) maps each bank's custodian code to the RM and backup CC. Update it as relationships change — it ships with the app.
 
 ---
 
@@ -57,10 +59,10 @@ The app reads `userData/.env` first; if `AIRTABLE_PAT` is missing there, it fall
 
 ```bash
 # Clone the repository
-git clone https://github.com/markqian1998/fx-order-system.git
+git clone https://github.com/markqian1998/poseidon-trade-ops.git
 
 # Navigate to the project directory
-cd fx-order-system
+cd poseidon-trade-ops
 
 # Install the required dependencies
 npm install
@@ -88,13 +90,21 @@ node server.js
 ## Project Structure
 
 ```
-fx-order-system/
-├── assets/                     # Supporting files (e.g., Poseidon FX Orders User Guide)
-├── index.html                 # Main HTML interface
-├── server.js                  # Node.js server logic
-├── package.json               # Project metadata and dependencies
-├── package-lock.json          # Locked dependency versions
-└── README.md                  # This documentation file
+poseidon-trade-ops/
+├── main.js                    # Electron main process
+├── server.js                  # Express backend (Airtable proxy + price feed)
+├── index.html                 # Renderer (5-tab UI)
+├── counterparty.json          # Bank → RM routing
+├── renderer/
+│   ├── common.js              # Shared helpers (formatNotional, toast, ...)
+│   ├── account-picker.js      # Airtable-driven account search component
+│   ├── counterparty.js        # Counterparty resolution + cache
+│   ├── templates.js           # Per-tab email body templates
+│   └── tab-factory.js         # Factory used by Call/FTD/Loan tabs
+├── assets/                    # App icons, user guide
+├── .env.example               # Template for the per-user .env
+├── package.json
+└── README.md
 ```
 
 ---

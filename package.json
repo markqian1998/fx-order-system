@@ -1,5 +1,5 @@
 {
-  "name": "poseidon-fx-orders",
+  "name": "poseidon-trade-ops",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "**/node_modules/tough-cookie-file-store/**"
     ],
     "appId": "com.yourcompany.poseidon",
-    "productName": "Poseidon FX Orders",
+    "productName": "Poseidon Trade Ops",
     "mac": {
       "target": "dmg",
       "icon": "assets/mac-icon.png",
