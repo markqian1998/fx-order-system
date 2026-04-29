@@ -38,9 +38,16 @@ function _setupDate(elId, dayOffset = 0) {
 async function _routingFor(tabId, account, mode) {
     const el = document.getElementById(`${tabId}RoutingDisplay`);
     if (!el) return;
-    if (!account) { el.style.display = 'none'; return; }
-    const cp = await PoseidonCounterparty.getCounterparty(account, mode || 'deposit');
+    if (!account) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+    // Reset to a clean "loading" state immediately, BEFORE the await — so any
+    // stale content from a previous selection is wiped before this resolves.
+    el.className = 'alert alert-secondary mb-3';
+    el.textContent = 'Resolving counterparty…';
     el.style.display = 'block';
+
+    const cp = await PoseidonCounterparty.getCounterparty(account, mode || 'deposit');
+
     if (!cp || !cp.resolvedAs || !cp.to || cp.to.length === 0) {
         el.className = 'alert alert-warning mb-3';
         el.textContent = `No counterparty configured for ${account.custodian || '?'}/${account.book || '?'} — submit may fail.`;
@@ -161,7 +168,14 @@ function mountDepositLoanTab(config) {
             el.value = flatpickr.formatDate(base, 'j M Y');
         }
         const routing = document.getElementById(`${id}RoutingDisplay`);
-        if (routing) routing.style.display = 'none';
+        if (routing) {
+            routing.style.display = 'none';
+            routing.innerHTML = '';   // wipe stale content so it can't reappear if .display flips back
+        }
+        // Drop renderer-side counterparty cache so the next selection always re-resolves.
+        if (window.PoseidonCounterparty && window.PoseidonCounterparty._clearCache) {
+            window.PoseidonCounterparty._clearCache();
+        }
         if (config.onClear) config.onClear(refs);
     }
 

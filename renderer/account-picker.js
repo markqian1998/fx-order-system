@@ -30,6 +30,17 @@ function mountAccountPicker(rootEl, onSelect) {
     let selected = null;
     let debounceTimer = null;
 
+    function _resetDisplayContent() {
+        const acno = rootEl.querySelector('.d-acno');
+        const name = rootEl.querySelector('.d-name');
+        const book = rootEl.querySelector('.d-book');
+        const badge = rootEl.querySelector('.d-custodian-badge');
+        if (acno) acno.textContent = '';
+        if (name) name.textContent = '';
+        if (book) book.textContent = '';
+        if (badge) { badge.textContent = ''; badge.className = 'd-custodian-badge badge text-bg-light'; }
+    }
+
     const api = {
         getSelected: () => selected,
         getSubAccount: () => sub.value.trim(),
@@ -38,6 +49,7 @@ function mountAccountPicker(rootEl, onSelect) {
             search.value = '';
             sub.value = '';
             display.style.display = 'none';
+            _resetDisplayContent();
             results.style.display = 'none';
         },
     };
@@ -61,24 +73,33 @@ function mountAccountPicker(rootEl, onSelect) {
     }
 
     function selectAccount(a) {
-        selected = a;
-        search.value = `${a.accountNo} ${a.acName}`;
-        results.style.display = 'none';
-        display.style.display = 'block';
-        rootEl.querySelector('.d-acno').textContent = a.accountNo;
-        rootEl.querySelector('.d-name').textContent = a.acName;
-        rootEl.querySelector('.d-book').textContent = a.book || '-';
-        const badge = rootEl.querySelector('.d-custodian-badge');
-        const color = (window.PoseidonCommon && window.PoseidonCommon.custodianColor) ? window.PoseidonCommon.custodianColor(a.custodian) : 'light';
-        badge.className = `badge text-bg-${color}`;
-        badge.textContent = a.custodian || '-';
-        if (onSelect) onSelect(a);
+        console.log('[picker] selectAccount:', a);
+        try {
+            selected = a;
+            search.value = `${a.accountNo} ${a.acName}`;
+            results.style.display = 'none';
+            display.style.display = 'block';
+            rootEl.querySelector('.d-acno').textContent = a.accountNo;
+            rootEl.querySelector('.d-name').textContent = a.acName;
+            rootEl.querySelector('.d-book').textContent = a.book || '-';
+            const badge = rootEl.querySelector('.d-custodian-badge');
+            const color = (window.PoseidonCommon && window.PoseidonCommon.custodianColor) ? window.PoseidonCommon.custodianColor(a.custodian) : 'light';
+            badge.className = `d-custodian-badge badge text-bg-${color}`;
+            badge.textContent = a.custodian || '-';
+        } catch (err) {
+            console.error('[picker] selectAccount DOM update failed:', err);
+        }
+        try {
+            if (onSelect) onSelect(a);
+        } catch (err) {
+            console.error('[picker] onSelect callback threw:', err);
+        }
     }
 
     async function fetchAndRender(q) {
         spinner.classList.remove('d-none');
         try {
-            const res = await fetch(`/api/accounts?q=${encodeURIComponent(q)}`);
+            const res = await fetch(`/api/accounts?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 results.innerHTML = `<div class="list-group-item text-danger">Error: ${err.error || res.status}</div>`;
