@@ -57,7 +57,6 @@ async function _routingFor(tabId, account, mode) {
     const desk = cp.displayName || cp.resolvedAs;
     const toLine = cp.to.map(r => r.email).join(', ');
     const ccEmails = [...(cp.ccBackup || []).map(r => r.email), 'fa@ppgfo.com'];
-    if (account.pcEmail) ccEmails.push(account.pcEmail);
     const me = PoseidonCommon.myEmail();
     if (me) ccEmails.push(`${me} (you)`);
     el.innerHTML =
@@ -70,7 +69,6 @@ function _buildCcList(cp, account) {
     return [
         ...(cp.ccBackup || []),
         'fa@ppgfo.com',
-        ...(account.pcEmail ? [account.pcEmail] : []),
         ...(me ? [me] : []),
     ];
 }

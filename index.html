@@ -291,7 +291,6 @@
             el.className = 'alert alert-info mb-3';
             const toLine = cp.to.map(r => r.email).join(', ');
             const ccEmails = [...(cp.ccBackup || []).map(r => r.email), 'fa@ppgfo.com'];
-            if (account.pcEmail) ccEmails.push(account.pcEmail);
             const me = PoseidonCommon.myEmail();
             if (me) ccEmails.push(`${me} (you)`);
             el.innerHTML =
@@ -628,7 +627,6 @@
             return [
                 ...(cp.ccBackup || []),
                 'fa@ppgfo.com',
-                ...(account.pcEmail ? [account.pcEmail] : []),
                 ...(me ? [me] : []),
             ];
         }
