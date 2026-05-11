@@ -86,7 +86,7 @@
       "to":       [{ "name": "UBS HK GFIM", "email": "gfim-hk-ia@ubs.com" }],
       "ccBackup": [
         { "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" },
-        { "name": "Yu, Elsa",     "email": "elsa-za.yu@ubs.com" }
+        { "name": "Yuen, Ryan",   "email": "ryan.yuen@ubs.com" }
       ]
     },
     "ubs-hksg-fx-dac": {
@@ -94,7 +94,7 @@
       "to":       [{ "name": "UBS FX DAC", "email": "ol-fxdac-apac@ubs.com" }],
       "ccBackup": [
         { "name": "Cheng, Heidi", "email": "heidi.cheng@ubs.com" },
-        { "name": "Yu, Elsa",     "email": "elsa-za.yu@ubs.com" }
+        { "name": "Yuen, Ryan",   "email": "ryan.yuen@ubs.com" }
       ]
     }
   },
