@@ -129,6 +129,25 @@
                 </div>
             </div>
 
+            <div id="eqVwapFields" class="row hidden">
+                <div class="mb-3 col-md-3">
+                    <label for="eqVwapType" class="form-label">VWAP Type</label>
+                    <select id="eqVwapType" class="form-select">
+                        <option value="day" selected>Day VWAP</option>
+                        <option value="limit">VWAP Limit</option>
+                        <option value="window">VWAP + Time Window</option>
+                    </select>
+                </div>
+                <div class="mb-3 col-md-3 hidden" id="eqVwapLimitCol">
+                    <label for="eqVwapLimit" class="form-label">Limit Price</label>
+                    <input type="text" id="eqVwapLimit" class="form-control" placeholder="e.g. 50.00" inputmode="decimal">
+                </div>
+                <div class="mb-3 col-md-4 hidden" id="eqVwapWindowCol">
+                    <label for="eqVwapWindow" class="form-label">Time Window</label>
+                    <input type="text" id="eqVwapWindow" class="form-control" placeholder="e.g. 10:00-14:00 HKT">
+                </div>
+            </div>
+
             <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
                 <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
                 <button id="eqGenerate" class="btn btn-primary btn-lg px-4" disabled>Send Buy Order</button>
@@ -703,12 +722,14 @@
             tabId: 'eq',
             mode: 'deposit',  // Equity reuses deposit-mode counterparty; no FX DAC override
             extras: () => {
-                // Show/hide Limit-only fields when Order Type toggles
+                // Show/hide Limit and VWAP sub-fields when Order Type toggles
                 const limitFields = document.getElementById('eqLimitFields');
+                const vwapFields  = document.getElementById('eqVwapFields');
                 document.querySelectorAll('input[name="eqOrderType"]').forEach(r => {
                     r.addEventListener('change', () => {
-                        const isLimit = document.querySelector('input[name="eqOrderType"]:checked').value === 'limit';
-                        limitFields.classList.toggle('hidden', !isLimit);
+                        const v = document.querySelector('input[name="eqOrderType"]:checked').value;
+                        limitFields.classList.toggle('hidden', v !== 'limit');
+                        vwapFields.classList.toggle('hidden',  v !== 'vwap');
                     });
                 });
                 // GTD date picker (revealed when TIF = GTD)
@@ -719,6 +740,13 @@
                 gtdInput.value = flatpickr.formatDate(defaultGtd, 'j M Y');
                 document.getElementById('eqTif').addEventListener('change', e => {
                     gtdCol.classList.toggle('hidden', e.target.value !== 'gtd');
+                });
+                // VWAP sub-type reveals Limit price OR Time Window field
+                const vwapLimitCol  = document.getElementById('eqVwapLimitCol');
+                const vwapWindowCol = document.getElementById('eqVwapWindowCol');
+                document.getElementById('eqVwapType').addEventListener('change', e => {
+                    vwapLimitCol.classList.toggle('hidden',  e.target.value !== 'limit');
+                    vwapWindowCol.classList.toggle('hidden', e.target.value !== 'window');
                 });
                 // Submit button text reflects Buy/Sell
                 document.querySelectorAll('input[name="eqAction"]').forEach(r => {
@@ -733,24 +761,39 @@
                 qtyInput.addEventListener('input', () => { qtyInput.value = PoseidonCommon.formatNotional(qtyInput.value); });
             },
             onClear: () => {
-                // Reset Buy/Sell to Buy, Market to Market, hide Limit row + GTD col, clear inputs
+                // Reset all fields
                 document.getElementById('eqActionBuy').checked = true;
                 document.getElementById('eqOrderTypeMarket').checked = true;
                 document.getElementById('eqSymbol').value = '';
                 document.getElementById('eqQuantity').value = '';
                 document.getElementById('eqLimitPrice').value = '';
                 document.getElementById('eqTif').value = 'day';
+                document.getElementById('eqVwapType').value = 'day';
+                document.getElementById('eqVwapLimit').value = '';
+                document.getElementById('eqVwapWindow').value = '';
                 document.getElementById('eqLimitFields').classList.add('hidden');
+                document.getElementById('eqVwapFields').classList.add('hidden');
                 document.getElementById('eqGtdDateCol').classList.add('hidden');
+                document.getElementById('eqVwapLimitCol').classList.add('hidden');
+                document.getElementById('eqVwapWindowCol').classList.add('hidden');
                 document.getElementById('eqGenerate').textContent = 'Send Buy Order';
             },
             validate: () => {
                 if (!document.getElementById('eqSymbol').value.trim()) return 'Please enter a symbol.';
                 const qty = PoseidonCommon.parseNotional(document.getElementById('eqQuantity').value);
                 if (!qty || qty <= 0) return 'Please enter a valid quantity.';
-                const isLimit = document.querySelector('input[name="eqOrderType"]:checked').value === 'limit';
-                if (isLimit && !document.getElementById('eqLimitPrice').value.trim()) {
+                const orderType = document.querySelector('input[name="eqOrderType"]:checked').value;
+                if (orderType === 'limit' && !document.getElementById('eqLimitPrice').value.trim()) {
                     return 'Please enter the limit price.';
+                }
+                if (orderType === 'vwap') {
+                    const vt = document.getElementById('eqVwapType').value;
+                    if (vt === 'limit' && !document.getElementById('eqVwapLimit').value.trim()) {
+                        return 'Please enter the VWAP limit price.';
+                    }
+                    if (vt === 'window' && !document.getElementById('eqVwapWindow').value.trim()) {
+                        return 'Please enter the time window (e.g. 10:00-14:00 HKT).';
+                    }
                 }
                 return null;
             },
@@ -769,6 +812,9 @@
                     limitPrice: document.getElementById('eqLimitPrice').value.trim(),
                     tif: document.getElementById('eqTif').value,
                     gtdDate: document.getElementById('eqGtdDate').value.trim(),
+                    vwapType:   document.getElementById('eqVwapType').value,
+                    vwapLimit:  document.getElementById('eqVwapLimit').value.trim(),
+                    vwapWindow: document.getElementById('eqVwapWindow').value.trim(),
                 };
             },
             template: 'equityOrder',

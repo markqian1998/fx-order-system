@@ -95,7 +95,13 @@ function equityOrder(ctx) {
             lines.push('Day order');
         }
     } else if (ctx.orderType === 'vwap') {
-        lines.push('VWAP');
+        if (ctx.vwapType === 'limit' && ctx.vwapLimit) {
+            lines.push(`VWAP, limit price: ${ctx.vwapLimit}`);
+        } else if (ctx.vwapType === 'window' && ctx.vwapWindow) {
+            lines.push(`VWAP, ${ctx.vwapWindow}`);
+        } else {
+            lines.push('Day VWAP');
+        }
     } else {
         lines.push('At market price');
     }
