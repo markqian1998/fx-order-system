@@ -77,23 +77,25 @@ function mountDepositLoanTab(config) {
     const id = config.tabId;
     const mode = config.mode || 'deposit';
 
-    const ccySelect    = document.getElementById(`${id}Ccy`);
-    const amountInput  = document.getElementById(`${id}Amount`);
+    const ccySelect    = document.getElementById(`${id}Ccy`);      // optional (Equity tab doesn't have currency)
+    const amountInput  = document.getElementById(`${id}Amount`);   // optional (Equity uses quantity instead)
     const generateBtn  = document.getElementById(`${id}Generate`);
     const pickerHost   = document.getElementById(`${id}AccountPicker`);
 
-    _fillCurrencySelect(ccySelect, config.currencyDefault);
-    amountInput.addEventListener('input', () => { amountInput.value = PoseidonCommon.formatNotional(amountInput.value); });
+    if (ccySelect) _fillCurrencySelect(ccySelect, config.currencyDefault);
+    if (amountInput) {
+        amountInput.addEventListener('input', () => { amountInput.value = PoseidonCommon.formatNotional(amountInput.value); });
 
-    // Currency-precision check on blur (warns + auto-rounds for JPY/KRW/TWD/HKD)
-    amountInput.addEventListener('blur', () => {
-        const ccy = ccySelect.value;
-        const { rounded, changed } = PoseidonCommon.roundAmountForCcy(amountInput.value, ccy);
-        if (changed) {
-            amountInput.value = rounded;
-            PoseidonCommon.showToast(`${ccy} takes ${PoseidonCommon.decimalsFor(ccy)} decimals — auto-rounded.`, 'warning');
-        }
-    });
+        // Currency-precision check on blur (warns + auto-rounds for JPY/KRW/TWD/HKD)
+        amountInput.addEventListener('blur', () => {
+            const ccy = ccySelect ? ccySelect.value : '';
+            const { rounded, changed } = PoseidonCommon.roundAmountForCcy(amountInput.value, ccy);
+            if (changed) {
+                amountInput.value = rounded;
+                PoseidonCommon.showToast(`${ccy} takes ${PoseidonCommon.decimalsFor(ccy)} decimals — auto-rounded.`, 'warning');
+            }
+        });
+    }
 
     // Init any date inputs the tab has
     const dates = {};
@@ -111,9 +113,9 @@ function mountDepositLoanTab(config) {
         picker: null,
         getAccount: () => refs.picker && refs.picker.getSelected(),
         getSub: () => refs.picker ? refs.picker.getSubAccount() : '',
-        getCcy: () => ccySelect.value,
-        getAmountStr: () => amountInput.value.trim(),
-        getAmount: () => PoseidonCommon.parseNotional(amountInput.value),
+        getCcy: () => ccySelect ? ccySelect.value : '',
+        getAmountStr: () => amountInput ? amountInput.value.trim() : '',
+        getAmount: () => amountInput ? PoseidonCommon.parseNotional(amountInput.value) : 0,
     };
 
     refs.picker = PoseidonAccountPicker.mountAccountPicker(pickerHost, (account) => {
@@ -161,8 +163,8 @@ function mountDepositLoanTab(config) {
 
     function clear() {
         refs.picker.clear();
-        ccySelect.value = config.currencyDefault || 'USD';
-        amountInput.value = '';
+        if (ccySelect) ccySelect.value = config.currencyDefault || 'USD';
+        if (amountInput) amountInput.value = '';
         generateBtn.disabled = true;
         for (const [name, el] of Object.entries(dates)) {
             if (!el) continue;

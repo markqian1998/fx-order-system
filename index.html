@@ -25,6 +25,7 @@
         .nav-tabs, .btn, .btn-group, label.form-label { -webkit-user-select: none; user-select: none; }
 
         /* Tab category coloring — keep inactive tabs grey, color the active one by category */
+        .nav-tabs .nav-link.cat-equity.active  { color: #6f42c1; border-color: #dee2e6 #dee2e6 #6f42c1; }
         .nav-tabs .nav-link.cat-fx.active      { color: #0d6efd; border-color: #dee2e6 #dee2e6 #0d6efd; }
         .nav-tabs .nav-link.cat-deposit.active { color: #198754; border-color: #dee2e6 #dee2e6 #198754; }
         .nav-tabs .nav-link.cat-loan.active    { color: #fd7e14; border-color: #dee2e6 #dee2e6 #fd7e14; }
@@ -47,7 +48,10 @@
     <div class="d-flex align-items-center mb-2">
         <ul class="nav nav-tabs flex-grow-1" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link cat-fx active" data-bs-toggle="tab" data-bs-target="#tab-fx" type="button">💱 FX Order</button>
+                <button class="nav-link cat-equity active" data-bs-toggle="tab" data-bs-target="#tab-eq" type="button">📈 Equity Order</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link cat-fx" data-bs-toggle="tab" data-bs-target="#tab-fx" type="button">💱 FX Order</button>
             </li>
             <li class="tab-divider">|</li>
             <li class="nav-item" role="presentation">
@@ -69,7 +73,68 @@
 
     <div class="tab-content">
         <!-- FX Order tab -->
-        <div class="tab-pane fade show active" id="tab-fx" role="tabpanel">
+        <!-- Equity Order tab -->
+        <div class="tab-pane fade show active" id="tab-eq" role="tabpanel">
+            <div id="eqAccountPicker"></div>
+            <div id="eqRoutingDisplay" class="alert alert-secondary mb-3" style="display:none;"></div>
+
+            <div class="mb-3">
+                <label class="form-label d-block">Action</label>
+                <div class="btn-group btn-group-lg" role="group" aria-label="Equity action">
+                    <input type="radio" class="btn-check" name="eqAction" id="eqActionBuy" value="buy" checked>
+                    <label class="btn btn-outline-primary" for="eqActionBuy" style="min-width: 8rem;">Buy</label>
+                    <input type="radio" class="btn-check" name="eqAction" id="eqActionSell" value="sell">
+                    <label class="btn btn-outline-danger" for="eqActionSell" style="min-width: 8rem;">Sell</label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label d-block">Order Type</label>
+                <div class="btn-group btn-group-lg" role="group" aria-label="Order type">
+                    <input type="radio" class="btn-check" name="eqOrderType" id="eqOrderTypeMarket" value="market" checked>
+                    <label class="btn btn-outline-primary" for="eqOrderTypeMarket" style="min-width: 8rem;">Market</label>
+                    <input type="radio" class="btn-check" name="eqOrderType" id="eqOrderTypeLimit" value="limit">
+                    <label class="btn btn-outline-primary" for="eqOrderTypeLimit" style="min-width: 8rem;">Limit</label>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="mb-3 col-md-4">
+                    <label for="eqSymbol" class="form-label">Symbol</label>
+                    <input type="text" id="eqSymbol" class="form-control" placeholder="e.g. 6361.JT  /  AXTI US  /  700 HK">
+                </div>
+                <div class="mb-3 col-md-4">
+                    <label for="eqQuantity" class="form-label">Quantity</label>
+                    <input type="text" id="eqQuantity" class="form-control" placeholder="e.g. 26,000">
+                </div>
+            </div>
+
+            <div id="eqLimitFields" class="row hidden">
+                <div class="mb-3 col-md-3">
+                    <label for="eqLimitPrice" class="form-label">Limit Price</label>
+                    <input type="text" id="eqLimitPrice" class="form-control" placeholder="e.g. 100" inputmode="decimal">
+                </div>
+                <div class="mb-3 col-md-3">
+                    <label for="eqTif" class="form-label">Time-in-force</label>
+                    <select id="eqTif" class="form-select">
+                        <option value="day" selected>Day order</option>
+                        <option value="gtd">Good Till Date (GTD)</option>
+                    </select>
+                </div>
+                <div class="mb-3 col-md-3 hidden" id="eqGtdDateCol">
+                    <label for="eqGtdDate" class="form-label">Good Till</label>
+                    <input type="text" id="eqGtdDate" class="form-control" placeholder="Select date">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
+                <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
+                <button id="eqGenerate" class="btn btn-primary btn-lg px-4" disabled>Send Buy Order</button>
+            </div>
+        </div>
+
+        <!-- FX Order tab -->
+        <div class="tab-pane fade" id="tab-fx" role="tabpanel">
             <div id="formContainer">
                 <div id="fxAccountPicker"></div>
                 <div id="fxRoutingDisplay" class="alert alert-secondary mb-3" style="display:none;"></div>
@@ -630,6 +695,82 @@
                 ...(me ? [me] : []),
             ];
         }
+
+        // ===== Equity Order (factory) =====
+        PoseidonTabFactory.mountDepositLoanTab({
+            tabId: 'eq',
+            mode: 'deposit',  // Equity reuses deposit-mode counterparty; no FX DAC override
+            extras: () => {
+                // Show/hide Limit-only fields when Order Type toggles
+                const limitFields = document.getElementById('eqLimitFields');
+                document.querySelectorAll('input[name="eqOrderType"]').forEach(r => {
+                    r.addEventListener('change', () => {
+                        const isLimit = document.querySelector('input[name="eqOrderType"]:checked').value === 'limit';
+                        limitFields.classList.toggle('hidden', !isLimit);
+                    });
+                });
+                // GTD date picker (revealed when TIF = GTD)
+                const gtdCol = document.getElementById('eqGtdDateCol');
+                const gtdInput = document.getElementById('eqGtdDate');
+                const defaultGtd = new Date(Date.now() + 7 * 86400000);
+                flatpickr(gtdInput, { defaultDate: defaultGtd, dateFormat: 'j M Y', position: 'auto right', appendTo: document.body });
+                gtdInput.value = flatpickr.formatDate(defaultGtd, 'j M Y');
+                document.getElementById('eqTif').addEventListener('change', e => {
+                    gtdCol.classList.toggle('hidden', e.target.value !== 'gtd');
+                });
+                // Submit button text reflects Buy/Sell
+                document.querySelectorAll('input[name="eqAction"]').forEach(r => {
+                    r.addEventListener('change', () => {
+                        const action = document.querySelector('input[name="eqAction"]:checked').value;
+                        document.getElementById('eqGenerate').textContent =
+                            action === 'buy' ? 'Send Buy Order' : 'Send Sell Order';
+                    });
+                });
+                // Quantity comma formatter
+                const qtyInput = document.getElementById('eqQuantity');
+                qtyInput.addEventListener('input', () => { qtyInput.value = PoseidonCommon.formatNotional(qtyInput.value); });
+            },
+            onClear: () => {
+                // Reset Buy/Sell to Buy, Market to Market, hide Limit row + GTD col, clear inputs
+                document.getElementById('eqActionBuy').checked = true;
+                document.getElementById('eqOrderTypeMarket').checked = true;
+                document.getElementById('eqSymbol').value = '';
+                document.getElementById('eqQuantity').value = '';
+                document.getElementById('eqLimitPrice').value = '';
+                document.getElementById('eqTif').value = 'day';
+                document.getElementById('eqLimitFields').classList.add('hidden');
+                document.getElementById('eqGtdDateCol').classList.add('hidden');
+                document.getElementById('eqGenerate').textContent = 'Send Buy Order';
+            },
+            validate: () => {
+                if (!document.getElementById('eqSymbol').value.trim()) return 'Please enter a symbol.';
+                const qty = PoseidonCommon.parseNotional(document.getElementById('eqQuantity').value);
+                if (!qty || qty <= 0) return 'Please enter a valid quantity.';
+                const isLimit = document.querySelector('input[name="eqOrderType"]:checked').value === 'limit';
+                if (isLimit && !document.getElementById('eqLimitPrice').value.trim()) {
+                    return 'Please enter the limit price.';
+                }
+                return null;
+            },
+            buildCtx: ({ account, salutation, refs }) => {
+                const orderType = document.querySelector('input[name="eqOrderType"]:checked').value;
+                const action = document.querySelector('input[name="eqAction"]:checked').value;
+                return {
+                    salutation,
+                    copy: account.copy || account.accountNo,
+                    sub: refs.getSub(),
+                    acName: account.acName,
+                    action,
+                    symbol: document.getElementById('eqSymbol').value.trim(),
+                    quantity: document.getElementById('eqQuantity').value.trim(),
+                    orderType,
+                    limitPrice: document.getElementById('eqLimitPrice').value.trim(),
+                    tif: document.getElementById('eqTif').value,
+                    gtdDate: document.getElementById('eqGtdDate').value.trim(),
+                };
+            },
+            template: 'equityOrder',
+        });
 
         // ===== Call Deposit (factory) =====
         PoseidonTabFactory.mountDepositLoanTab({

@@ -74,4 +74,30 @@ function siLoan(ctx) {
     return { subject, body };
 }
 
-window.PoseidonTemplates = { callDepositPlace, callDepositUnwind, ftdDeposit, oneOffLoan, siLoan };
+function equityOrder(ctx) {
+    const subject = `Equity Order - ${PoseidonCommon.formatDateForSubject()}`;
+    const action = ctx.action === 'sell' ? 'Sell' : 'Buy';
+    const lines = [
+        `Hi ${ctx.salutation || 'Team'},`,
+        '',
+        `For a/c ${_accountTagNoBook(ctx)},`,
+        '',
+        `Please help place order below.`,
+        '',
+        `${action} ${ctx.symbol}`,
+        `Quantity: ${ctx.quantity} shares`,
+    ];
+    if (ctx.orderType === 'limit') {
+        lines.push(`At limit price: ${ctx.limitPrice}`);
+        if (ctx.tif === 'gtd' && ctx.gtdDate) {
+            lines.push(`Good Till ${ctx.gtdDate}`);
+        } else {
+            lines.push('Day order');
+        }
+    } else {
+        lines.push('At market price');
+    }
+    return { subject, body: lines.join('\n') };
+}
+
+window.PoseidonTemplates = { callDepositPlace, callDepositUnwind, ftdDeposit, oneOffLoan, siLoan, equityOrder };
