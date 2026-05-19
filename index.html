@@ -78,79 +78,14 @@
             <div id="eqAccountPicker"></div>
             <div id="eqRoutingDisplay" class="alert alert-secondary mb-3" style="display:none;"></div>
 
-            <div class="mb-3">
-                <label class="form-label d-block">Action</label>
-                <div class="btn-group btn-group-lg" role="group" aria-label="Equity action">
-                    <input type="radio" class="btn-check" name="eqAction" id="eqActionBuy" value="buy" checked>
-                    <label class="btn btn-outline-primary" for="eqActionBuy" style="min-width: 8rem;">Buy</label>
-                    <input type="radio" class="btn-check" name="eqAction" id="eqActionSell" value="sell">
-                    <label class="btn btn-outline-danger" for="eqActionSell" style="min-width: 8rem;">Sell</label>
-                </div>
-            </div>
+            <div id="eqOrders"></div>
 
-            <div class="mb-3">
-                <label class="form-label d-block">Order Type</label>
-                <div class="btn-group btn-group-lg" role="group" aria-label="Order type">
-                    <input type="radio" class="btn-check" name="eqOrderType" id="eqOrderTypeMarket" value="market" checked>
-                    <label class="btn btn-outline-primary" for="eqOrderTypeMarket" style="min-width: 7rem;">Market</label>
-                    <input type="radio" class="btn-check" name="eqOrderType" id="eqOrderTypeLimit" value="limit">
-                    <label class="btn btn-outline-primary" for="eqOrderTypeLimit" style="min-width: 7rem;">Limit</label>
-                    <input type="radio" class="btn-check" name="eqOrderType" id="eqOrderTypeVwap" value="vwap">
-                    <label class="btn btn-outline-primary" for="eqOrderTypeVwap" style="min-width: 7rem;">VWAP</label>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    <button id="eqAddOrder" class="btn btn-secondary">Add Another Order</button>
+                    <button class="btn btn-link text-muted small clear-tab-btn ms-2" type="button">Clear all</button>
                 </div>
-            </div>
-
-            <div class="row">
-                <div class="mb-3 col-md-4">
-                    <label for="eqSymbol" class="form-label">Symbol</label>
-                    <input type="text" id="eqSymbol" class="form-control" placeholder="e.g. 6361.JT  /  AXTI US  /  700 HK">
-                </div>
-                <div class="mb-3 col-md-4">
-                    <label for="eqQuantity" class="form-label">Quantity</label>
-                    <input type="text" id="eqQuantity" class="form-control" placeholder="e.g. 26,000">
-                </div>
-            </div>
-
-            <div id="eqLimitFields" class="row hidden">
-                <div class="mb-3 col-md-3">
-                    <label for="eqLimitPrice" class="form-label">Limit Price</label>
-                    <input type="text" id="eqLimitPrice" class="form-control" placeholder="e.g. 100" inputmode="decimal">
-                </div>
-                <div class="mb-3 col-md-3">
-                    <label for="eqTif" class="form-label">Time-in-force</label>
-                    <select id="eqTif" class="form-select">
-                        <option value="day" selected>Day order</option>
-                        <option value="gtd">Good Till Date (GTD)</option>
-                    </select>
-                </div>
-                <div class="mb-3 col-md-3 hidden" id="eqGtdDateCol">
-                    <label for="eqGtdDate" class="form-label">Good Till</label>
-                    <input type="text" id="eqGtdDate" class="form-control" placeholder="Select date">
-                </div>
-            </div>
-
-            <div id="eqVwapFields" class="row hidden">
-                <div class="mb-3 col-md-3">
-                    <label for="eqVwapType" class="form-label">VWAP Type</label>
-                    <select id="eqVwapType" class="form-select">
-                        <option value="day" selected>Day VWAP</option>
-                        <option value="limit">VWAP Limit</option>
-                        <option value="window">VWAP + Time Window</option>
-                    </select>
-                </div>
-                <div class="mb-3 col-md-3 hidden" id="eqVwapLimitCol">
-                    <label for="eqVwapLimit" class="form-label">Limit Price</label>
-                    <input type="text" id="eqVwapLimit" class="form-control" placeholder="e.g. 50.00" inputmode="decimal">
-                </div>
-                <div class="mb-3 col-md-4 hidden" id="eqVwapWindowCol">
-                    <label for="eqVwapWindow" class="form-label">Time Window</label>
-                    <input type="text" id="eqVwapWindow" class="form-control" placeholder="e.g. 10:00-14:00 HKT">
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
-                <button class="btn btn-link text-muted small clear-tab-btn" type="button">Clear all</button>
-                <button id="eqGenerate" class="btn btn-primary btn-lg px-4" disabled>Send Buy Order</button>
+                <button id="eqGenerate" class="btn btn-primary btn-lg px-4" disabled>Send Equity Order</button>
             </div>
         </div>
 
@@ -717,104 +652,231 @@
             ];
         }
 
-        // ===== Equity Order (factory) =====
+        // ===== Equity Order (multi-order, factory) =====
+
+        // Mount a single order block. Each block's fields are suffixed with its index
+        // (eqAction1, eqSymbol1, …) so we can have arbitrarily many side-by-side.
+        function addEqOrder() {
+            const ordersDiv = document.getElementById('eqOrders');
+            const i = ordersDiv.children.length + 1;
+            const html = `
+                <div class="order" id="eqOrder${i}">
+                    <h4>Order ${i}
+                        <span class="float-end">
+                            <button type="button" class="btn btn-secondary btn-sm me-1" onclick="replicateEqOrder(${i})">Replicate</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteEqOrder(${i})">Delete</button>
+                        </span>
+                    </h4>
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Action</label>
+                        <div class="btn-group btn-group-lg" role="group">
+                            <input type="radio" class="btn-check" name="eqAction${i}" id="eqActionBuy${i}" value="buy" checked>
+                            <label class="btn btn-outline-primary" for="eqActionBuy${i}" style="min-width: 6rem;">Buy</label>
+                            <input type="radio" class="btn-check" name="eqAction${i}" id="eqActionSell${i}" value="sell">
+                            <label class="btn btn-outline-danger" for="eqActionSell${i}" style="min-width: 6rem;">Sell</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Order Type</label>
+                        <div class="btn-group btn-group-lg" role="group">
+                            <input type="radio" class="btn-check" name="eqOrderType${i}" id="eqOrderTypeMarket${i}" value="market" checked>
+                            <label class="btn btn-outline-primary" for="eqOrderTypeMarket${i}" style="min-width: 6rem;">Market</label>
+                            <input type="radio" class="btn-check" name="eqOrderType${i}" id="eqOrderTypeLimit${i}" value="limit">
+                            <label class="btn btn-outline-primary" for="eqOrderTypeLimit${i}" style="min-width: 6rem;">Limit</label>
+                            <input type="radio" class="btn-check" name="eqOrderType${i}" id="eqOrderTypeVwap${i}" value="vwap">
+                            <label class="btn btn-outline-primary" for="eqOrderTypeVwap${i}" style="min-width: 6rem;">VWAP</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="mb-3 col-md-4">
+                            <label for="eqSymbol${i}" class="form-label">Symbol</label>
+                            <input type="text" id="eqSymbol${i}" class="form-control" placeholder="e.g. 6361.JT  /  AXTI US  /  700 HK">
+                        </div>
+                        <div class="mb-3 col-md-4">
+                            <label for="eqQuantity${i}" class="form-label">Quantity</label>
+                            <input type="text" id="eqQuantity${i}" class="form-control" placeholder="e.g. 26,000" oninput="this.value = PoseidonCommon.formatNotional(this.value)">
+                        </div>
+                    </div>
+
+                    <div id="eqLimitFields${i}" class="row hidden">
+                        <div class="mb-3 col-md-3">
+                            <label for="eqLimitPrice${i}" class="form-label">Limit Price</label>
+                            <input type="text" id="eqLimitPrice${i}" class="form-control" placeholder="e.g. 100" inputmode="decimal">
+                        </div>
+                        <div class="mb-3 col-md-3">
+                            <label for="eqTif${i}" class="form-label">Time-in-force</label>
+                            <select id="eqTif${i}" class="form-select">
+                                <option value="day" selected>Day order</option>
+                                <option value="gtd">Good Till Date (GTD)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 col-md-3 hidden" id="eqGtdDateCol${i}">
+                            <label for="eqGtdDate${i}" class="form-label">Good Till</label>
+                            <input type="text" id="eqGtdDate${i}" class="form-control" placeholder="Select date">
+                        </div>
+                    </div>
+
+                    <div id="eqVwapFields${i}" class="row hidden">
+                        <div class="mb-3 col-md-3">
+                            <label for="eqVwapType${i}" class="form-label">VWAP Type</label>
+                            <select id="eqVwapType${i}" class="form-select">
+                                <option value="day" selected>Day VWAP</option>
+                                <option value="limit">VWAP Limit</option>
+                                <option value="window">VWAP + Time Window</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 col-md-3 hidden" id="eqVwapLimitCol${i}">
+                            <label for="eqVwapLimit${i}" class="form-label">Limit Price</label>
+                            <input type="text" id="eqVwapLimit${i}" class="form-control" placeholder="e.g. 50.00" inputmode="decimal">
+                        </div>
+                        <div class="mb-3 col-md-4 hidden" id="eqVwapWindowCol${i}">
+                            <label for="eqVwapWindow${i}" class="form-label">Time Window</label>
+                            <input type="text" id="eqVwapWindow${i}" class="form-control" placeholder="e.g. 10:00-14:00 HKT">
+                        </div>
+                    </div>
+                </div>
+            `;
+            ordersDiv.insertAdjacentHTML('beforeend', html);
+
+            // Wire per-order toggles
+            const limitFields = document.getElementById(`eqLimitFields${i}`);
+            const vwapFields  = document.getElementById(`eqVwapFields${i}`);
+            document.querySelectorAll(`input[name="eqOrderType${i}"]`).forEach(r => {
+                r.addEventListener('change', () => {
+                    const v = document.querySelector(`input[name="eqOrderType${i}"]:checked`).value;
+                    limitFields.classList.toggle('hidden', v !== 'limit');
+                    vwapFields.classList.toggle('hidden',  v !== 'vwap');
+                });
+            });
+            // GTD date picker
+            const gtdCol = document.getElementById(`eqGtdDateCol${i}`);
+            const gtdInput = document.getElementById(`eqGtdDate${i}`);
+            const defaultGtd = new Date(Date.now() + 7 * 86400000);
+            flatpickr(gtdInput, { defaultDate: defaultGtd, dateFormat: 'j M Y', position: 'auto right', appendTo: document.body });
+            gtdInput.value = flatpickr.formatDate(defaultGtd, 'j M Y');
+            document.getElementById(`eqTif${i}`).addEventListener('change', e => {
+                gtdCol.classList.toggle('hidden', e.target.value !== 'gtd');
+            });
+            // VWAP sub-type reveals Limit price OR Time Window field
+            const vwapLimitCol  = document.getElementById(`eqVwapLimitCol${i}`);
+            const vwapWindowCol = document.getElementById(`eqVwapWindowCol${i}`);
+            document.getElementById(`eqVwapType${i}`).addEventListener('change', e => {
+                vwapLimitCol.classList.toggle('hidden',  e.target.value !== 'limit');
+                vwapWindowCol.classList.toggle('hidden', e.target.value !== 'window');
+            });
+        }
+
+        function deleteEqOrder(index) {
+            const block = document.getElementById(`eqOrder${index}`);
+            if (block) block.remove();
+        }
+
+        function replicateEqOrder(srcIndex) {
+            const src = document.getElementById(`eqOrder${srcIndex}`);
+            if (!src) return;
+            // Capture
+            const cap = {
+                action:     src.querySelector(`input[name="eqAction${srcIndex}"]:checked`)?.value || 'buy',
+                orderType:  src.querySelector(`input[name="eqOrderType${srcIndex}"]:checked`)?.value || 'market',
+                symbol:     src.querySelector(`#eqSymbol${srcIndex}`)?.value || '',
+                quantity:   src.querySelector(`#eqQuantity${srcIndex}`)?.value || '',
+                limitPrice: src.querySelector(`#eqLimitPrice${srcIndex}`)?.value || '',
+                tif:        src.querySelector(`#eqTif${srcIndex}`)?.value || 'day',
+                gtdDate:    src.querySelector(`#eqGtdDate${srcIndex}`)?.value || '',
+                vwapType:   src.querySelector(`#eqVwapType${srcIndex}`)?.value || 'day',
+                vwapLimit:  src.querySelector(`#eqVwapLimit${srcIndex}`)?.value || '',
+                vwapWindow: src.querySelector(`#eqVwapWindow${srcIndex}`)?.value || '',
+            };
+            addEqOrder();
+            const newIndex = document.getElementById('eqOrders').children.length;
+            const dst = document.getElementById(`eqOrder${newIndex}`);
+
+            // Action
+            const actionRadio = dst.querySelector(`input[name="eqAction${newIndex}"][value="${cap.action}"]`);
+            if (actionRadio) actionRadio.checked = true;
+            // Order Type — dispatch change so Limit/VWAP rows show/hide
+            const otRadio = dst.querySelector(`input[name="eqOrderType${newIndex}"][value="${cap.orderType}"]`);
+            if (otRadio) { otRadio.checked = true; otRadio.dispatchEvent(new Event('change')); }
+            // Plain fields
+            dst.querySelector(`#eqSymbol${newIndex}`).value = cap.symbol;
+            dst.querySelector(`#eqQuantity${newIndex}`).value = cap.quantity;
+            dst.querySelector(`#eqLimitPrice${newIndex}`).value = cap.limitPrice;
+            // TIF — dispatch change so GTD col shows/hides
+            const tifSel = dst.querySelector(`#eqTif${newIndex}`);
+            tifSel.value = cap.tif; tifSel.dispatchEvent(new Event('change'));
+            if (cap.gtdDate) dst.querySelector(`#eqGtdDate${newIndex}`).value = cap.gtdDate;
+            // VWAP sub-type — dispatch change so Limit/Window cols show/hide
+            const vtSel = dst.querySelector(`#eqVwapType${newIndex}`);
+            vtSel.value = cap.vwapType; vtSel.dispatchEvent(new Event('change'));
+            dst.querySelector(`#eqVwapLimit${newIndex}`).value = cap.vwapLimit;
+            dst.querySelector(`#eqVwapWindow${newIndex}`).value = cap.vwapWindow;
+        }
+
         PoseidonTabFactory.mountDepositLoanTab({
             tabId: 'eq',
             mode: 'deposit',  // Equity reuses deposit-mode counterparty; no FX DAC override
             extras: () => {
-                // Show/hide Limit and VWAP sub-fields when Order Type toggles
-                const limitFields = document.getElementById('eqLimitFields');
-                const vwapFields  = document.getElementById('eqVwapFields');
-                document.querySelectorAll('input[name="eqOrderType"]').forEach(r => {
-                    r.addEventListener('change', () => {
-                        const v = document.querySelector('input[name="eqOrderType"]:checked').value;
-                        limitFields.classList.toggle('hidden', v !== 'limit');
-                        vwapFields.classList.toggle('hidden',  v !== 'vwap');
-                    });
-                });
-                // GTD date picker (revealed when TIF = GTD)
-                const gtdCol = document.getElementById('eqGtdDateCol');
-                const gtdInput = document.getElementById('eqGtdDate');
-                const defaultGtd = new Date(Date.now() + 7 * 86400000);
-                flatpickr(gtdInput, { defaultDate: defaultGtd, dateFormat: 'j M Y', position: 'auto right', appendTo: document.body });
-                gtdInput.value = flatpickr.formatDate(defaultGtd, 'j M Y');
-                document.getElementById('eqTif').addEventListener('change', e => {
-                    gtdCol.classList.toggle('hidden', e.target.value !== 'gtd');
-                });
-                // VWAP sub-type reveals Limit price OR Time Window field
-                const vwapLimitCol  = document.getElementById('eqVwapLimitCol');
-                const vwapWindowCol = document.getElementById('eqVwapWindowCol');
-                document.getElementById('eqVwapType').addEventListener('change', e => {
-                    vwapLimitCol.classList.toggle('hidden',  e.target.value !== 'limit');
-                    vwapWindowCol.classList.toggle('hidden', e.target.value !== 'window');
-                });
-                // Submit button text reflects Buy/Sell
-                document.querySelectorAll('input[name="eqAction"]').forEach(r => {
-                    r.addEventListener('change', () => {
-                        const action = document.querySelector('input[name="eqAction"]:checked').value;
-                        document.getElementById('eqGenerate').textContent =
-                            action === 'buy' ? 'Send Buy Order' : 'Send Sell Order';
-                    });
-                });
-                // Quantity comma formatter
-                const qtyInput = document.getElementById('eqQuantity');
-                qtyInput.addEventListener('input', () => { qtyInput.value = PoseidonCommon.formatNotional(qtyInput.value); });
+                // Mount the first order block + wire the Add button
+                addEqOrder();
+                document.getElementById('eqAddOrder').addEventListener('click', addEqOrder);
             },
             onClear: () => {
-                // Reset all fields
-                document.getElementById('eqActionBuy').checked = true;
-                document.getElementById('eqOrderTypeMarket').checked = true;
-                document.getElementById('eqSymbol').value = '';
-                document.getElementById('eqQuantity').value = '';
-                document.getElementById('eqLimitPrice').value = '';
-                document.getElementById('eqTif').value = 'day';
-                document.getElementById('eqVwapType').value = 'day';
-                document.getElementById('eqVwapLimit').value = '';
-                document.getElementById('eqVwapWindow').value = '';
-                document.getElementById('eqLimitFields').classList.add('hidden');
-                document.getElementById('eqVwapFields').classList.add('hidden');
-                document.getElementById('eqGtdDateCol').classList.add('hidden');
-                document.getElementById('eqVwapLimitCol').classList.add('hidden');
-                document.getElementById('eqVwapWindowCol').classList.add('hidden');
-                document.getElementById('eqGenerate').textContent = 'Send Buy Order';
+                // Wipe all order blocks, then re-mount a fresh one
+                document.getElementById('eqOrders').innerHTML = '';
+                addEqOrder();
             },
             validate: () => {
-                if (!document.getElementById('eqSymbol').value.trim()) return 'Please enter a symbol.';
-                const qty = PoseidonCommon.parseNotional(document.getElementById('eqQuantity').value);
-                if (!qty || qty <= 0) return 'Please enter a valid quantity.';
-                const orderType = document.querySelector('input[name="eqOrderType"]:checked').value;
-                if (orderType === 'limit' && !document.getElementById('eqLimitPrice').value.trim()) {
-                    return 'Please enter the limit price.';
-                }
-                if (orderType === 'vwap') {
-                    const vt = document.getElementById('eqVwapType').value;
-                    if (vt === 'limit' && !document.getElementById('eqVwapLimit').value.trim()) {
-                        return 'Please enter the VWAP limit price.';
+                const blocks = document.querySelectorAll('#eqOrders .order');
+                if (blocks.length === 0) return 'Please add at least one order.';
+                for (let i = 0; i < blocks.length; i++) {
+                    const n = i + 1;
+                    if (!document.getElementById(`eqSymbol${n}`).value.trim()) {
+                        return `Order ${n}: please enter a symbol.`;
                     }
-                    if (vt === 'window' && !document.getElementById('eqVwapWindow').value.trim()) {
-                        return 'Please enter the time window (e.g. 10:00-14:00 HKT).';
+                    const qty = PoseidonCommon.parseNotional(document.getElementById(`eqQuantity${n}`).value);
+                    if (!qty || qty <= 0) return `Order ${n}: please enter a valid quantity.`;
+                    const orderType = document.querySelector(`input[name="eqOrderType${n}"]:checked`).value;
+                    if (orderType === 'limit' && !document.getElementById(`eqLimitPrice${n}`).value.trim()) {
+                        return `Order ${n}: please enter the limit price.`;
+                    }
+                    if (orderType === 'vwap') {
+                        const vt = document.getElementById(`eqVwapType${n}`).value;
+                        if (vt === 'limit' && !document.getElementById(`eqVwapLimit${n}`).value.trim()) {
+                            return `Order ${n}: please enter the VWAP limit price.`;
+                        }
+                        if (vt === 'window' && !document.getElementById(`eqVwapWindow${n}`).value.trim()) {
+                            return `Order ${n}: please enter the time window.`;
+                        }
                     }
                 }
                 return null;
             },
             buildCtx: ({ account, salutation, refs }) => {
-                const orderType = document.querySelector('input[name="eqOrderType"]:checked').value;
-                const action = document.querySelector('input[name="eqAction"]:checked').value;
+                const blocks = document.querySelectorAll('#eqOrders .order');
+                const orders = Array.from(blocks).map((_, idx) => {
+                    const n = idx + 1;
+                    return {
+                        action:     document.querySelector(`input[name="eqAction${n}"]:checked`).value,
+                        symbol:     document.getElementById(`eqSymbol${n}`).value.trim(),
+                        quantity:   document.getElementById(`eqQuantity${n}`).value.trim(),
+                        orderType:  document.querySelector(`input[name="eqOrderType${n}"]:checked`).value,
+                        limitPrice: document.getElementById(`eqLimitPrice${n}`).value.trim(),
+                        tif:        document.getElementById(`eqTif${n}`).value,
+                        gtdDate:    document.getElementById(`eqGtdDate${n}`).value.trim(),
+                        vwapType:   document.getElementById(`eqVwapType${n}`).value,
+                        vwapLimit:  document.getElementById(`eqVwapLimit${n}`).value.trim(),
+                        vwapWindow: document.getElementById(`eqVwapWindow${n}`).value.trim(),
+                    };
+                });
                 return {
                     salutation,
                     copy: account.copy || account.accountNo,
                     sub: refs.getSub(),
                     acName: account.acName,
-                    action,
-                    symbol: document.getElementById('eqSymbol').value.trim(),
-                    quantity: document.getElementById('eqQuantity').value.trim(),
-                    orderType,
-                    limitPrice: document.getElementById('eqLimitPrice').value.trim(),
-                    tif: document.getElementById('eqTif').value,
-                    gtdDate: document.getElementById('eqGtdDate').value.trim(),
-                    vwapType:   document.getElementById('eqVwapType').value,
-                    vwapLimit:  document.getElementById('eqVwapLimit').value.trim(),
-                    vwapWindow: document.getElementById('eqVwapWindow').value.trim(),
+                    orders,
                 };
             },
             template: 'equityOrder',

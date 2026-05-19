@@ -74,37 +74,48 @@ function siLoan(ctx) {
     return { subject, body };
 }
 
-function equityOrder(ctx) {
-    const subject = `Equity Order - ${PoseidonCommon.formatDateForSubject()}`;
-    const action = ctx.action === 'sell' ? 'Sell' : 'Buy';
-    const lines = [
-        `Hi ${ctx.salutation || 'Team'},`,
-        '',
-        `For a/c ${_accountTagNoBook(ctx)},`,
-        '',
-        `Please help place order below.`,
-        '',
-        `${action} ${ctx.symbol}`,
-        `Quantity: ${ctx.quantity} shares`,
-    ];
-    if (ctx.orderType === 'limit') {
-        lines.push(`At limit price: ${ctx.limitPrice}`);
-        if (ctx.tif === 'gtd' && ctx.gtdDate) {
-            lines.push(`Good Till ${ctx.gtdDate}`);
-        } else {
-            lines.push('Day order');
-        }
-    } else if (ctx.orderType === 'vwap') {
-        if (ctx.vwapType === 'limit' && ctx.vwapLimit) {
-            lines.push(`VWAP, limit price: ${ctx.vwapLimit}`);
-        } else if (ctx.vwapType === 'window' && ctx.vwapWindow) {
-            lines.push(`VWAP, ${ctx.vwapWindow}`);
+function _equityOrderBlock(o) {
+    const action = o.action === 'sell' ? 'Sell' : 'Buy';
+    const lines = [`${action} ${o.symbol}`, `Quantity: ${o.quantity} shares`];
+    if (o.orderType === 'limit') {
+        lines.push(`At limit price: ${o.limitPrice}`);
+        lines.push(o.tif === 'gtd' && o.gtdDate ? `Good Till ${o.gtdDate}` : 'Day order');
+    } else if (o.orderType === 'vwap') {
+        if (o.vwapType === 'limit' && o.vwapLimit) {
+            lines.push(`VWAP, limit price: ${o.vwapLimit}`);
+        } else if (o.vwapType === 'window' && o.vwapWindow) {
+            lines.push(`VWAP, ${o.vwapWindow}`);
         } else {
             lines.push('Day VWAP');
         }
     } else {
         lines.push('At market price');
     }
+    return lines;
+}
+
+function equityOrder(ctx) {
+    // ctx.orders: array of per-order objects.
+    // Backward-compat: if ctx has no `orders` array, wrap the single ctx as one order.
+    const orders = Array.isArray(ctx.orders) ? ctx.orders : [{
+        action: ctx.action, symbol: ctx.symbol, quantity: ctx.quantity,
+        orderType: ctx.orderType, limitPrice: ctx.limitPrice, tif: ctx.tif, gtdDate: ctx.gtdDate,
+        vwapType: ctx.vwapType, vwapLimit: ctx.vwapLimit, vwapWindow: ctx.vwapWindow,
+    }];
+    const multi = orders.length > 1;
+    const subject = `Equity Order${multi ? 's' : ''} - ${PoseidonCommon.formatDateForSubject()}`;
+    const lines = [
+        `Hi ${ctx.salutation || 'Team'},`,
+        '',
+        `For a/c ${_accountTagNoBook(ctx)},`,
+        '',
+        `Please help place ${multi ? 'orders' : 'order'} below.`,
+    ];
+    orders.forEach((o, idx) => {
+        lines.push('');
+        if (multi) lines.push(`**Equity Order ${idx + 1}**`);
+        lines.push(..._equityOrderBlock(o));
+    });
     return { subject, body: lines.join('\n') };
 }
 
