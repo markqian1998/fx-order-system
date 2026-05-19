@@ -94,6 +94,8 @@ function equityOrder(ctx) {
         } else {
             lines.push('Day order');
         }
+    } else if (ctx.orderType === 'vwap') {
+        lines.push('VWAP');
     } else {
         lines.push('At market price');
     }
